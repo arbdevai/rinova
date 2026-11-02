@@ -63,6 +63,60 @@ class AdbConnectionManager {
         }
     }
 
+    suspend fun pair(host: String, port: Int, pairingCode: String): Result<String> = withContext(Dispatchers.IO) {
+        val cleanCode = pairingCode.trim()
+        if (cleanCode.length != 6 || !cleanCode.all { it.isDigit() }) {
+            return@withContext Result.failure(IllegalArgumentException("Kode pairing harus berupa 6 digit angka."))
+        }
+
+        // 1. Validasi jangkauan socket port pairing sementara
+        val socketTest = Socket()
+        try {
+            socketTest.connect(InetSocketAddress(host, port), 4000)
+            socketTest.close()
+        } catch (e: Exception) {
+            val err = "Gagal menjangkau $host:$port. Pastikan dialog pairing di HP target masih terbuka dan satu jaringan Wi-Fi."
+            return@withContext Result.failure(IOException(err, e))
+        }
+
+        // 2. Cari eksekutor binary adb
+        val candidates = listOf("adb", "/usr/bin/adb", "/system/bin/adb", "/data/local/tmp/adb")
+        var adbPath: String? = null
+        for (c in candidates) {
+            try {
+                val p = ProcessBuilder(listOf(c, "version")).redirectErrorStream(true).start()
+                if (p.waitFor() == 0) {
+                    adbPath = c
+                    break
+                }
+            } catch (_: Exception) {}
+        }
+
+        if (adbPath == null) {
+            return@withContext Result.failure(
+                IOException("Biner ADB lokal tidak ditemukan di host. Jalankan 'adb pair $host:$port $cleanCode' pada terminal teknisi.")
+            )
+        }
+
+        try {
+            val process = ProcessBuilder(listOf(adbPath, "pair", "$host:$port", cleanCode))
+                .redirectErrorStream(true)
+                .start()
+
+            val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
+            val exitCode = process.waitFor()
+
+            if (output.contains("Successfully paired", ignoreCase = true)) {
+                Result.success(output)
+            } else {
+                val errMsg = if (output.isNotEmpty()) output else "Proses pairing gagal (Exit code: $exitCode)."
+                Result.failure(IOException(errMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun execute(command: String, timeoutMs: Long = 20000): Result<AdbShellResponse> = withContext(Dispatchers.IO) {
         val dadb = activeDadb ?: return@withContext Result.failure(IllegalStateException("Belum terhubung ke perangkat target"))
         try {

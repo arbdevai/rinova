@@ -15,6 +15,10 @@ class AdbRepository(
         return adbManager.connect(host, port)
     }
 
+    suspend fun pair(host: String, port: Int, pairingCode: String): Result<String> {
+        return adbManager.pair(host, port, pairingCode)
+    }
+
     suspend fun disconnect() {
         adbManager.disconnect()
     }
