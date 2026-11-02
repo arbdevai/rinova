@@ -38,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,7 +69,6 @@ import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
 import com.rinova.app.ui.theme.TextPrimary
 import com.rinova.app.ui.theme.TextSecondary
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 @Composable
@@ -84,6 +84,7 @@ fun DebloatScreen(
     var riskFilter by remember { mutableStateOf<DebloatRisk?>(null) } // null = All
     var actionNotification by remember { mutableStateOf<String?>(null) }
     var pendingPackageAction by remember { mutableStateOf<Pair<DebloatPackage, String>?>(null) } // Pair(pkg, actionType)
+    val coroutineScope = rememberCoroutineScope()
 
     // Auto-detect vendor on connect
     LaunchedEffect(connectionState) {
@@ -115,7 +116,7 @@ fun DebloatScreen(
             confirmButtonText = if (isUninstall) "Copot Paket" else "Konfirmasi",
             onConfirm = {
                 pendingPackageAction = null
-                MainScope().launch {
+                coroutineScope.launch {
                     val res = if (isUninstall) {
                         debloatRepository.uninstallPackage(item)
                     } else {
@@ -159,7 +160,7 @@ fun DebloatScreen(
                     selected = isSelected,
                     onClick = {
                         selectedVendor = cat
-                        MainScope().launch {
+                        coroutineScope.launch {
                             debloatRepository.loadDebloatList(cat)
                         }
                     },
@@ -247,7 +248,7 @@ fun DebloatScreen(
             )
             OutlinedButton(
                 onClick = {
-                    MainScope().launch {
+                    coroutineScope.launch {
                         debloatRepository.loadDebloatList(selectedVendor)
                     }
                 },
@@ -287,7 +288,7 @@ fun DebloatScreen(
                         if (pkg.isEnabled) {
                             pendingPackageAction = Pair(pkg, "disable")
                         } else {
-                            MainScope().launch {
+                            coroutineScope.launch {
                                 debloatRepository.togglePackage(pkg)
                             }
                         }
@@ -296,7 +297,7 @@ fun DebloatScreen(
                         pendingPackageAction = Pair(pkg, "uninstall")
                     },
                     onRestore = {
-                        MainScope().launch {
+                        coroutineScope.launch {
                             val res = debloatRepository.restorePackage(pkg)
                             res.fold(
                                 onSuccess = { actionNotification = "Paket ${pkg.appLabel} berhasil dipulihkan." },

@@ -35,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,7 +65,6 @@ import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
 import com.rinova.app.ui.theme.TextPrimary
 import com.rinova.app.ui.theme.TextSecondary
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 @Composable
@@ -79,6 +79,7 @@ fun StorageScreen(
 
     var folderToDelete by remember { mutableStateOf<OrphanedDirectory?>(null) }
     var actionNotification by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     if (folderToDelete != null) {
         val target = folderToDelete!!
@@ -91,7 +92,7 @@ fun StorageScreen(
             onConfirm = {
                 val p = target.path
                 folderToDelete = null
-                MainScope().launch {
+                coroutineScope.launch {
                     val res = storageRepository.deleteOrphanedFolder(p)
                     res.fold(
                         onSuccess = {
@@ -215,7 +216,7 @@ fun StorageScreen(
                         onClick = {
                             showScanSheet = true
                             progressVal = 0.1f
-                            MainScope().launch {
+                            coroutineScope.launch {
                                 storageRepository.analyzeStorage { step, p ->
                                     currentStep = step
                                     progressVal = p
@@ -243,7 +244,7 @@ fun StorageScreen(
 
                     OutlinedButton(
                         onClick = {
-                            MainScope().launch {
+                            coroutineScope.launch {
                                 val res = storageRepository.trimSystemCaches()
                                 res.fold(
                                     onSuccess = { actionNotification = "Cache sistem berhasil dipangkas via ADB." },

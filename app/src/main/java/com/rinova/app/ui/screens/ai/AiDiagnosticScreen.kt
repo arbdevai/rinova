@@ -47,6 +47,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,7 +83,6 @@ import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
 import com.rinova.app.ui.theme.TextPrimary
 import com.rinova.app.ui.theme.TextSecondary
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -105,6 +105,7 @@ fun AiDiagnosticScreen(
     var isFetchingModels by remember { mutableStateOf(false) }
     var actionNotification by remember { mutableStateOf<String?>(null) }
     val focusManager = LocalFocusManager.current
+    val coroutineScope = rememberCoroutineScope()
 
     var pendingRecommendation by remember { mutableStateOf<AiRecommendation?>(null) }
     var pendingOptimization by remember { mutableStateOf<AiOptimization?>(null) }
@@ -129,7 +130,7 @@ fun AiDiagnosticScreen(
                 val r = rec
                 pendingRecommendation = null
                 if (!isDanger) {
-                    MainScope().launch {
+                    coroutineScope.launch {
                         val res = aiRepository.executeRecommendation(r)
                         res.fold(
                             onSuccess = { actionNotification = "Perintah berhasil dijalankan di HP target: $it" },
@@ -153,7 +154,7 @@ fun AiDiagnosticScreen(
             onConfirm = {
                 val cmd = opt.adbCommand
                 pendingOptimization = null
-                MainScope().launch {
+                coroutineScope.launch {
                     val res = aiRepository.executeOptimization(cmd)
                     res.fold(
                         onSuccess = { actionNotification = "Optimasi diterapkan: $it" },
@@ -316,7 +317,7 @@ fun AiDiagnosticScreen(
                                 return@OutlinedButton
                             }
                             isFetchingModels = true
-                            MainScope().launch {
+                            coroutineScope.launch {
                                 settingsRepository.saveGeminiApiKey(key)
                                 val res = aiRepository.fetchAvailableModels(key)
                                 isFetchingModels = false
@@ -353,7 +354,7 @@ fun AiDiagnosticScreen(
                                 return@OutlinedButton
                             }
                             isTestingModel = true
-                            MainScope().launch {
+                            coroutineScope.launch {
                                 settingsRepository.saveGeminiApiKey(key)
                                 settingsRepository.saveGeminiModel(selectedModel.trim())
                                 val res = aiRepository.testModelAndKey(key, selectedModel.trim())
@@ -391,7 +392,7 @@ fun AiDiagnosticScreen(
                             actionNotification = "Masukkan API Key terlebih dahulu."
                             return@Button
                         }
-                        MainScope().launch {
+                        coroutineScope.launch {
                             settingsRepository.saveGeminiApiKey(key)
                             settingsRepository.saveGeminiModel(model)
                             val res = aiRepository.runAiAudit(key, model)

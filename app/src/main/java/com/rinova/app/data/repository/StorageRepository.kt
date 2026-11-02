@@ -82,7 +82,7 @@ class StorageRepository(
             val orphanedList = mutableListOf<OrphanedDirectory>()
             var orphanedTotalBytes = 0L
 
-            fun inspectFolders(basePath: String) {
+            suspend fun inspectFolders(basePath: String) {
                 val listResp = adbManager.execute("ls -1 $basePath")
                 val folders = listResp.getOrNull()?.output?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
                 for (folder in folders) {

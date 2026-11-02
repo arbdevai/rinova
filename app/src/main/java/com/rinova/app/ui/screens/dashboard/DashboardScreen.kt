@@ -36,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,7 +62,6 @@ import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
 import com.rinova.app.ui.theme.TextPrimary
 import com.rinova.app.ui.theme.TextSecondary
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 @Composable
@@ -81,6 +81,7 @@ fun DashboardScreen(
     var dialogAlertType by remember { mutableStateOf(AlertType.WARNING) }
     var onConfirmAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var actionFeedback by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     if (onConfirmAction != null) {
         CustomActionDialog(
@@ -271,7 +272,7 @@ fun DashboardScreen(
                             dialogCommand = "reboot"
                             dialogAlertType = AlertType.WARNING
                             onConfirmAction = {
-                                MainScope().launch {
+                                coroutineScope.launch {
                                     adbRepository.rebootTarget()
                                     actionFeedback = "Perintah reboot normal terkirim."
                                 }
@@ -290,7 +291,7 @@ fun DashboardScreen(
                             dialogCommand = "reboot recovery"
                             dialogAlertType = AlertType.CRITICAL
                             onConfirmAction = {
-                                MainScope().launch {
+                                coroutineScope.launch {
                                     adbRepository.rebootTarget("recovery")
                                     actionFeedback = "Perintah reboot recovery terkirim."
                                 }
@@ -309,7 +310,7 @@ fun DashboardScreen(
                             dialogCommand = "setprop persist.sys.safemode 1 && reboot"
                             dialogAlertType = AlertType.CRITICAL
                             onConfirmAction = {
-                                MainScope().launch {
+                                coroutineScope.launch {
                                     adbRepository.executeCommand("setprop persist.sys.safemode 1")
                                     adbRepository.rebootTarget()
                                     actionFeedback = "Target dimatikan untuk masuk ke Safe Mode."
@@ -330,7 +331,7 @@ fun DashboardScreen(
                         dialogCommand = "pm trim-caches 9999999999999"
                         dialogAlertType = AlertType.SUCCESS
                         onConfirmAction = {
-                            MainScope().launch {
+                            coroutineScope.launch {
                                 val res = storageRepository.trimSystemCaches()
                                 res.fold(
                                     onSuccess = { actionFeedback = "Cache sistem berhasil dipangkas." },

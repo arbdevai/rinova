@@ -36,7 +36,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,6 +78,7 @@ fun ConnectScreen(
     var isSubmitting by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val focusManager = LocalFocusManager.current
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         val savedIp = settingsRepository.lastTargetIp.first()
@@ -234,7 +237,7 @@ fun ConnectScreen(
                     ) {
                         OutlinedButton(
                             onClick = {
-                                kotlinx.coroutines.MainScope().run {
+                                coroutineScope.launch {
                                     adbRepository.disconnect()
                                 }
                             },
@@ -264,7 +267,7 @@ fun ConnectScreen(
                             }
                             errorMessage = null
                             isSubmitting = true
-                            kotlinx.coroutines.MainScope().run {
+                            coroutineScope.launch {
                                 settingsRepository.saveLastConnection(cleanIp, portInput.trim())
                                 val res = adbRepository.connect(cleanIp, cleanPort)
                                 isSubmitting = false

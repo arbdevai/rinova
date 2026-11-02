@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,7 +62,6 @@ import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
 import com.rinova.app.ui.theme.TextPrimary
 import com.rinova.app.ui.theme.TextSecondary
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 @Composable
@@ -75,6 +75,7 @@ fun AdwareHunterScreen(
 
     var capturedWindowPkg by remember { mutableStateOf<String?>(null) }
     var actionNotification by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     var selectedActionTarget by remember { mutableStateOf<Pair<String, Boolean>?>(null) } // Pair(packageName, isUninstall)
 
@@ -96,7 +97,7 @@ fun AdwareHunterScreen(
             confirmButtonText = if (isUninstall) "Copot Sekarang" else "Bekukan",
             onConfirm = {
                 selectedActionTarget = null
-                MainScope().launch {
+                coroutineScope.launch {
                     val res = if (isUninstall) {
                         adwareHunterRepository.uninstallApp(pkg)
                     } else {
@@ -182,7 +183,7 @@ fun AdwareHunterScreen(
 
                 Button(
                     onClick = {
-                        MainScope().launch {
+                        coroutineScope.launch {
                             val res = adwareHunterRepository.captureTopActiveWindow()
                             res.fold(
                                 onSuccess = {
@@ -293,7 +294,7 @@ fun AdwareHunterScreen(
             )
             Button(
                 onClick = {
-                    MainScope().launch {
+                    coroutineScope.launch {
                         adwareHunterRepository.scanSuspiciousApps()
                     }
                 },
