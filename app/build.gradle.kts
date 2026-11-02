@@ -71,6 +71,12 @@ android {
             excludes += "/META-INF/*.version"
             excludes += "META-INF/INDEX.LIST"
             excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE*"
+            excludes += "META-INF/license*"
+            excludes += "META-INF/NOTICE*"
+            excludes += "META-INF/notice*"
+            excludes += "META-INF/*.md"
+            excludes += "META-INF/*.txt"
         }
         jniLibs {
             useLegacyPackaging = true
@@ -99,7 +105,11 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.dadb)
+    implementation(libs.dadb) {
+        exclude(group = "org.graalvm.buildtools")
+        exclude(group = "org.junit.platform")
+        exclude(group = "org.junit.jupiter")
+    }
 
     // Image & Media
     implementation(libs.coil.compose)
