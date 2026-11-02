@@ -12,7 +12,7 @@ import com.rinova.app.data.repository.SettingsRepository
 import com.rinova.app.data.repository.StorageRepository
 
 class RinovaContainer(context: Context) {
-    val adbManager = AdbConnectionManager()
+    val adbManager = AdbConnectionManager(context.applicationContext)
     val geminiClient = GeminiApiClient()
 
     val settingsRepository = SettingsRepository(context.applicationContext)

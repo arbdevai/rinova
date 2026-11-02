@@ -41,6 +41,9 @@ coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 dadb = { module = "dev.mobile:dadb", version.ref = "dadb" }
+libadb-android = { module = "com.github.MuntashirAkon:libadb-android", version = "3.1.1" }
+bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version = "1.80" }
+conscrypt = { module = "org.conscrypt:conscrypt-android", version = "2.5.3" }
 junit = { module = "junit:junit", version.ref = "junit" }
 
 [plugins]

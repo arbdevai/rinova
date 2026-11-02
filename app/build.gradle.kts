@@ -13,8 +13,8 @@ android {
         applicationId = "com.rinova.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10500
-        versionName = "1.5.0"
+        versionCode = 10600
+        versionName = "1.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -77,6 +77,8 @@ android {
             excludes += "META-INF/notice*"
             excludes += "META-INF/*.md"
             excludes += "META-INF/*.txt"
+            excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+            excludes += "META-INF/native-image/**"
         }
         jniLibs {
             useLegacyPackaging = true
@@ -110,6 +112,11 @@ dependencies {
         exclude(group = "org.junit.platform")
         exclude(group = "org.junit.jupiter")
     }
+
+    // Embedded Rootless ADB Pairing Engine (TLS 1.3 & SPAKE2)
+    implementation(libs.libadb.android)
+    implementation(libs.bcpkix)
+    implementation(libs.conscrypt)
 
     // Image & Media
     implementation(libs.coil.compose)

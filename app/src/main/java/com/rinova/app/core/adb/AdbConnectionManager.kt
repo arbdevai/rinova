@@ -1,11 +1,14 @@
 package com.rinova.app.core.adb
 
+import android.content.Context
+import android.os.Build
 import com.rinova.app.core.log.RinovaLogManager
 import com.rinova.app.core.model.AdbConnectionState
 import com.rinova.app.core.model.DeviceInfo
 import com.rinova.app.core.util.VendorProfileDetector
 import dadb.AdbShellResponse
 import dadb.Dadb
+import io.github.muntashirakon.adb.PairingConnectionCtx
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +22,7 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
 
-class AdbConnectionManager {
+class AdbConnectionManager(private val context: Context) {
 
     private val mutex = Mutex()
     private var activeDadb: Dadb? = null
@@ -48,14 +51,17 @@ class AdbConnectionManager {
                 }
 
                 _connectionState.value = AdbConnectionState.Authorizing(host, port)
-                RinovaLogManager.i("CONN", "Menjalankan handshake protokol ADB ke $host:$port...")
+                RinovaLogManager.i("CONN", "Menjalankan handshake otorisasi ADB ke $host:$port...")
 
-                // 2. Inisialisasi Dadb handshake
+                // 2. Muat kredensial keypair Rinova
+                val keyBundle = RinovaAdbKeyStore.getOrGenerateKeyBundle(context)
+
+                // 3. Inisialisasi Dadb handshake dengan keypair tersimpan
                 activeDadb?.close()
-                val dadb = Dadb.create(host, port)
+                val dadb = Dadb.create(host, port, keyPair = keyBundle.dadbKeyPair)
                 activeDadb = dadb
 
-                // 3. Ambil data identitas perangkat target
+                // 4. Ambil data identitas perangkat target
                 RinovaLogManager.d("CONN", "Mengambil identitas getprop dan hardware dari target...")
                 val deviceInfo = fetchDeviceInfoInternal(dadb)
 
@@ -68,7 +74,7 @@ class AdbConnectionManager {
             } catch (e: Exception) {
                 activeDadb?.close()
                 activeDadb = null
-                val err = "Gagal otorisasi ADB ke $host:$port: ${e.localizedMessage ?: "Koneksi ditolak"}. Periksa popup 'Izinkan Debugging Nirkabel' di HP target."
+                val err = "Gagal otorisasi ADB ke $host:$port: ${e.localizedMessage ?: "Koneksi ditolak"}. Jika baru pertama kali, lakukan 'Pairing Nirkabel' terlebih dahulu atau periksa popup konfirmasi di HP target."
                 RinovaLogManager.e("CONN", err, e)
                 _connectionState.value = AdbConnectionState.Error(err)
                 Result.failure(IOException(err, e))
@@ -78,7 +84,7 @@ class AdbConnectionManager {
 
     suspend fun pair(host: String, port: Int, pairingCode: String): Result<String> = withContext(Dispatchers.IO) {
         val cleanCode = pairingCode.trim()
-        RinovaLogManager.i("PAIR", "Memulai proses pairing ke $host:$port dengan kode [$cleanCode]...")
+        RinovaLogManager.i("PAIR", "Memulai proses pairing nirkabel ke $host:$port (Kode: $cleanCode)...")
 
         if (cleanCode.length != 6 || !cleanCode.all { it.isDigit() }) {
             val err = "Kode pairing harus berupa 6 digit angka numerik."
@@ -94,68 +100,104 @@ class AdbConnectionManager {
             socketTest.close()
             RinovaLogManager.i("PAIR", "Port pairing $host:$port merespons socket dengan baik.")
         } catch (e: Exception) {
-            val err = "Gagal menjangkau $host:$port: ${e.localizedMessage}. Pastikan dialog pairing di HP target masih terbuka dan satu jaringan Wi-Fi."
+            val err = "Gagal menjangkau port pairing $host:$port: ${e.localizedMessage}. Pastikan dialog 'Pasangkan dengan kode pairing' di HP target masih terbuka di layar!"
             RinovaLogManager.e("PAIR", err, e)
             return@withContext Result.failure(IOException(err, e))
         }
 
-        // 2. Cari eksekutor binary adb di environment lokal
+        // 2. Muat kredensial keypair & sertifikat Rinova
+        val keyBundle = try {
+            RinovaAdbKeyStore.getOrGenerateKeyBundle(context)
+        } catch (e: Exception) {
+            val err = "Gagal memuat kredensial kriptografi Rinova: ${e.localizedMessage}"
+            RinovaLogManager.e("PAIR", err, e)
+            return@withContext Result.failure(IOException(err, e))
+        }
+
+        // 3. TIER 1: Embedded In-App Engine (TLS 1.3 + SPAKE2 Protocol - 100% No Root)
+        try {
+            RinovaLogManager.i("PAIR", "Mengeksekusi pairing via Embedded Engine (TLS 1.3 / SPAKE2 - No Root)...")
+            val deviceName = "Rinova Technician [${Build.MANUFACTURER} ${Build.MODEL}]"
+            val pairingClient = PairingConnectionCtx(
+                host,
+                port,
+                cleanCode.toByteArray(Charsets.UTF_8),
+                keyBundle.javaKeyPair.private,
+                keyBundle.certificate,
+                deviceName
+            )
+            pairingClient.use { client ->
+                client.start()
+            }
+            val successMsg = "Pairing nirkabel BERHASIL via Embedded Engine (TLS 1.3 / SPAKE2). Kunci Rinova berhasil didaftarkan di target!"
+            RinovaLogManager.i("PAIR", successMsg)
+            return@withContext Result.success(successMsg)
+        } catch (e: Exception) {
+            RinovaLogManager.w(
+                "PAIR",
+                "Embedded engine memberikan catatan (${e.javaClass.simpleName}: ${e.message}). Memeriksa opsi fallback..."
+            )
+        }
+
+        // 4. TIER 2: Fallback ke Biner CLI Lokal jika tersedia
         val candidates = listOf(
+            File(context.applicationInfo.nativeLibraryDir, "libadb.so").absolutePath,
+            "/data/data/com.termux/files/usr/bin/adb",
             "adb",
-            "/usr/bin/adb",
             "/system/bin/adb",
-            "/data/local/tmp/adb",
-            "/data/data/com.rinova.app/files/bin/adb"
+            "/data/local/tmp/adb"
         )
 
         var adbPath: String? = null
         for (c in candidates) {
-            RinovaLogManager.d("PAIR", "Memeriksa kandidat biner ADB: $c")
             try {
                 val f = File(c)
                 if (c == "adb" || (f.exists() && f.canExecute())) {
-                    val p = ProcessBuilder(listOf(c, "version")).redirectErrorStream(true).start()
+                    val p = ProcessBuilder(listOf(c, "version"))
+                        .apply {
+                            environment()["HOME"] = context.filesDir.absolutePath
+                            environment()["TMPDIR"] = context.cacheDir.absolutePath
+                        }
+                        .redirectErrorStream(true)
+                        .start()
                     val versionOut = p.inputStream.bufferedReader().use { it.readText() }.trim()
                     if (p.waitFor() == 0) {
                         adbPath = c
-                        RinovaLogManager.i("PAIR", "Biner ADB aktif ditemukan di: $c ($versionOut)")
+                        RinovaLogManager.i("PAIR", "Biner ADB fallback ditemukan di: $c ($versionOut)")
                         break
                     }
                 }
+            } catch (_: Exception) {}
+        }
+
+        if (adbPath != null) {
+            try {
+                RinovaLogManager.i("PAIR", "Mengeksekusi CLI fallback: $adbPath pair $host:$port $cleanCode")
+                val process = ProcessBuilder(listOf(adbPath, "pair", "$host:$port", cleanCode))
+                    .apply {
+                        directory(context.filesDir)
+                        environment()["HOME"] = context.filesDir.absolutePath
+                        environment()["TMPDIR"] = context.cacheDir.absolutePath
+                    }
+                    .redirectErrorStream(true)
+                    .start()
+
+                val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
+                val exitCode = process.waitFor()
+
+                if (output.contains("Successfully paired", ignoreCase = true)) {
+                    val msg = "SUKSES PAIRING (CLI): $output"
+                    RinovaLogManager.i("PAIR", msg)
+                    return@withContext Result.success(msg)
+                }
             } catch (e: Exception) {
-                RinovaLogManager.d("PAIR", "Kandidat $c tidak dapat dieksekusi: ${e.message}")
+                RinovaLogManager.w("PAIR", "CLI fallback gagal dieksekusi: ${e.message}")
             }
         }
 
-        if (adbPath == null) {
-            val err = "Biner ADB lokal tidak ditemukan di host. Jalankan 'adb pair $host:$port $cleanCode' pada terminal teknisi (Termux / chroot), atau gunakan tab 'QR Code'."
-            RinovaLogManager.e("PAIR", err)
-            return@withContext Result.failure(IOException(err))
-        }
-
-        try {
-            RinovaLogManager.i("PAIR", "Mengeksekusi: $adbPath pair $host:$port $cleanCode")
-            val process = ProcessBuilder(listOf(adbPath, "pair", "$host:$port", cleanCode))
-                .redirectErrorStream(true)
-                .start()
-
-            val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
-            val exitCode = process.waitFor()
-
-            RinovaLogManager.d("PAIR", "Proses pairing selesai (Exit: $exitCode). Output:\n$output")
-
-            if (output.contains("Successfully paired", ignoreCase = true)) {
-                RinovaLogManager.i("PAIR", "SUKSES PAIRING: $output")
-                Result.success(output)
-            } else {
-                val errMsg = if (output.isNotEmpty()) output else "Proses pairing gagal (Exit code: $exitCode)."
-                RinovaLogManager.w("PAIR", "Gagal pairing: $errMsg")
-                Result.failure(IOException(errMsg))
-            }
-        } catch (e: Exception) {
-            RinovaLogManager.e("PAIR", "Exception saat mengeksekusi pairing: ${e.localizedMessage}", e)
-            Result.failure(e)
-        }
+        val finalErr = "Pairing nirkabel belum berhasil. Pastikan kode 6-digit [$cleanCode] cocok dan dialog 'Pasangkan dengan kode pairing' di HP target masih aktif di layar (jangan di-minimize)."
+        RinovaLogManager.e("PAIR", finalErr)
+        Result.failure(IOException(finalErr))
     }
 
     suspend fun execute(command: String, timeoutMs: Long = 20000): Result<AdbShellResponse> = withContext(Dispatchers.IO) {
@@ -204,7 +246,6 @@ class AdbConnectionManager {
         val androidVersion = getProp("ro.build.version.release").ifEmpty { "14" }
         val sdkInt = getProp("ro.build.version.sdk").toIntOrNull() ?: 34
         val cpuAbi = getProp("ro.product.cpu.abi").ifEmpty { "arm64-v8a" }
-        val buildId = getProp("ro.build.display.id").ifEmpty { getProp("ro.build.id") }
         val securityPatch = getProp("ro.build.version.security_patch").ifEmpty { "2024-01-01" }
         val deviceCodename = getProp("ro.product.device").ifEmpty { getProp("ro.product.name") }
 
