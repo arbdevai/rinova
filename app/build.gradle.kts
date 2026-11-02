@@ -115,6 +115,8 @@ dependencies {
 
     // Embedded Rootless ADB Pairing Engine (TLS 1.3 & SPAKE2)
     implementation(libs.libadb.android)
+    implementation(libs.bcprov)
+    implementation(libs.bcpkix)
     implementation(libs.conscrypt)
 
     // Image & Media

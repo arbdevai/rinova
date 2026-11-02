@@ -3,7 +3,10 @@ package com.rinova.app.core.adb
 import android.content.Context
 import com.rinova.app.core.log.RinovaLogManager
 import dadb.AdbKeyPair
-import org.bouncycastle.x509.X509V3CertificateGenerator
+import org.bouncycastle.asn1.x500.X500Name
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -18,7 +21,6 @@ import java.security.spec.PKCS8EncodedKeySpec
 import java.security.spec.RSAPublicKeySpec
 import java.util.Base64
 import java.util.Date
-import javax.security.auth.x500.X500Principal
 
 data class RinovaKeyBundle(
     val javaKeyPair: KeyPair,
@@ -73,21 +75,23 @@ object RinovaAdbKeyStore {
         val javaKeyPair = deriveKeyPairFromPrivate(privKey)
 
         // 3. Buat sertifikat X.509 self-signed untuk autentikasi TLS 1.3 & SPAKE2
-        @Suppress("DEPRECATION")
-        val certGen = X509V3CertificateGenerator()
-        val principal = X500Principal("CN=Rinova Technician Toolkit, OU=Diagnostics, O=Rinova")
         val now = System.currentTimeMillis()
+        val notBefore = Date(now - 86400000L) // 24 jam lalu
+        val notAfter = Date(now + 86400000L * 365 * 25) // Berlaku 25 tahun
+        val issuer = X500Name("CN=Rinova Technician Toolkit, OU=Diagnostics, O=Rinova")
+        val serial = BigInteger.valueOf(now)
 
-        certGen.setSerialNumber(BigInteger.valueOf(now))
-        certGen.setIssuerDN(principal)
-        certGen.setSubjectDN(principal)
-        certGen.setNotBefore(Date(now - 86400000L)) // 24 jam lalu
-        certGen.setNotAfter(Date(now + 86400000L * 365 * 25)) // Berlaku 25 tahun
-        certGen.setPublicKey(javaKeyPair.public)
-        certGen.setSignatureAlgorithm("SHA256WithRSA")
-
-        @Suppress("DEPRECATION")
-        val cert = certGen.generate(javaKeyPair.private)
+        val certBuilder = JcaX509v3CertificateBuilder(
+            issuer,
+            serial,
+            notBefore,
+            notAfter,
+            issuer,
+            javaKeyPair.public
+        )
+        val signer = JcaContentSignerBuilder("SHA256withRSA").build(javaKeyPair.private)
+        val certHolder = certBuilder.build(signer)
+        val cert = JcaX509CertificateConverter().getCertificate(certHolder)
 
         // 4. Simpan sertifikat ke disk
         FileOutputStream(certFile).use { fos ->
