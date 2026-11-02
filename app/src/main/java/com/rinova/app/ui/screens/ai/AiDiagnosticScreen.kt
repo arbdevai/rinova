@@ -1,7 +1,6 @@
 package com.rinova.app.ui.screens.ai
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -29,19 +27,12 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,27 +56,25 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rinova.app.core.model.AiActionRisk
 import com.rinova.app.core.model.AiOptimization
 import com.rinova.app.core.model.AiRecommendation
-import com.rinova.app.core.model.GeminiTestResult
 import com.rinova.app.data.repository.AiDiagnosticRepository
 import com.rinova.app.data.repository.SettingsRepository
 import com.rinova.app.ui.components.AlertType
 import com.rinova.app.ui.components.CustomActionDialog
+import com.rinova.app.ui.components.RinovaModelPickerSheet
+import com.rinova.app.ui.components.RinovaSurfaceCard
+import com.rinova.app.ui.components.RinovaTactileButton
+import com.rinova.app.ui.components.RinovaTextField
 import com.rinova.app.ui.components.ScanningProgressSheet
 import com.rinova.app.ui.components.SkeletonCard
-import com.rinova.app.ui.theme.CyanOnPrimary
-import com.rinova.app.ui.theme.CyanPrimary
-import com.rinova.app.ui.theme.SlateBackground
-import com.rinova.app.ui.theme.SlateSurface
-import com.rinova.app.ui.theme.SlateSurfaceHighlight
-import com.rinova.app.ui.theme.SlateSurfaceVariant
+import com.rinova.app.ui.theme.Primary
+import com.rinova.app.ui.theme.PrimaryContainer
 import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
-import com.rinova.app.ui.theme.TextPrimary
-import com.rinova.app.ui.theme.TextSecondary
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiDiagnosticScreen(
     aiRepository: AiDiagnosticRepository,
@@ -103,6 +92,9 @@ fun AiDiagnosticScreen(
     var isKeyVisible by remember { mutableStateOf(false) }
     var isTestingModel by remember { mutableStateOf(false) }
     var isFetchingModels by remember { mutableStateOf(false) }
+    var showModelPickerSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     var actionNotification by remember { mutableStateOf<String?>(null) }
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
@@ -115,6 +107,21 @@ fun AiDiagnosticScreen(
         val savedModel = settingsRepository.geminiModel.first()
         if (savedKey.isNotEmpty()) apiKeyInput = savedKey
         if (savedModel.isNotEmpty()) selectedModel = savedModel
+    }
+
+    if (showModelPickerSheet) {
+        RinovaModelPickerSheet(
+            sheetState = sheetState,
+            models = availableModels,
+            selectedModelId = selectedModel,
+            onModelSelected = { model ->
+                selectedModel = model.id
+                coroutineScope.launch {
+                    settingsRepository.saveGeminiModel(model.id)
+                }
+            },
+            onDismiss = { showModelPickerSheet = false }
+        )
     }
 
     if (pendingRecommendation != null) {
@@ -169,7 +176,7 @@ fun AiDiagnosticScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(SlateBackground)
+            .background(MaterialTheme.colorScheme.background)
             .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
@@ -184,17 +191,16 @@ fun AiDiagnosticScreen(
             )
         }
 
-        // Gemini API Key & Dynamic Model Config
-        Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SlateSurface),
-            modifier = Modifier.fillMaxWidth()
+        // Gemini API Key & Dynamic Model Config (Bespoke Material 3)
+        RinovaSurfaceCard(
+            modifier = Modifier.fillMaxWidth(),
+            shapeRadius = 18.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -205,153 +211,160 @@ fun AiDiagnosticScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Key,
-                            contentDescription = null,
-                            tint = CyanPrimary,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(PrimaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Key,
+                                contentDescription = null,
+                                tint = Primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                         Text(
-                            text = "Konfigurasi Gemini API & Model",
-                            color = TextPrimary,
-                            fontSize = 15.sp,
+                            text = "Konfigurasi Gemini API",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    Text(
-                        text = "Dinamis & Bebas Hardcode",
-                        color = StatusSafe,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(StatusSafe.copy(alpha = 0.15f))
+                            .padding(horizontal = 7.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "Dinamis 100%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = StatusSafe,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
 
-                OutlinedTextField(
+                // API Key Field with Show/Hide
+                RinovaTextField(
                     value = apiKeyInput,
                     onValueChange = { apiKeyInput = it },
-                    label = { Text("Kunci API Gemini (AI Studio)") },
-                    placeholder = { Text("AIzaSy...") },
-                    singleLine = true,
-                    visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    label = "Kunci API Gemini (AI Studio)",
+                    placeholder = "AIzaSy...",
+                    leadingIcon = Icons.Default.Key,
                     trailingIcon = {
                         IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
                             Icon(
                                 imageVector = if (isKeyVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                                 contentDescription = null,
-                                tint = TextSecondary
+                                tint = Color(0xFF9CA3AF)
                             )
                         }
                     },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = CyanPrimary,
-                        unfocusedBorderColor = SlateSurfaceHighlight,
-                        focusedLabelColor = CyanPrimary,
-                        unfocusedLabelColor = TextSecondary,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        cursorColor = CyanPrimary
-                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Model Name Input
-                OutlinedTextField(
-                    value = selectedModel,
-                    onValueChange = { selectedModel = it },
-                    label = { Text("Nama Model Gemini Aktif") },
-                    placeholder = { Text("gemini-2.0-flash atau gemini-1.5-flash") },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = CyanPrimary,
-                        unfocusedBorderColor = SlateSurfaceHighlight,
-                        focusedLabelColor = CyanPrimary,
-                        unfocusedLabelColor = TextSecondary,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        cursorColor = CyanPrimary
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Quick presets or loaded models
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val fallbackPresets = listOf(
-                        "gemini-2.5-flash",
-                        "gemini-2.0-flash",
-                        "gemini-1.5-flash",
-                        "gemini-1.5-pro"
-                    )
-                    val modelList = if (availableModels.isNotEmpty()) availableModels.map { it.id } else fallbackPresets
-
-                    modelList.take(6).forEach { modelId ->
-                        FilterChip(
-                            selected = selectedModel == modelId,
-                            onClick = { selectedModel = modelId },
-                            label = { Text(modelId, fontSize = 11.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = CyanPrimary,
-                                selectedLabelColor = CyanOnPrimary,
-                                containerColor = SlateSurfaceVariant,
-                                labelColor = TextSecondary
-                            )
-                        )
-                    }
-                }
-
-                // Action buttons: Muat Model, Uji Limit, Simpan
-                Row(
+                // Active Model Tile (Searchable Bottom Sheet Trigger)
+                RinovaSurfaceCard(
+                    shapeRadius = 14.dp,
+                    borderWidth = 1.dp,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            val key = apiKeyInput.trim()
-                            if (key.isEmpty()) {
-                                actionNotification = "Masukkan API Key terlebih dahulu."
-                                return@OutlinedButton
-                            }
+                    onClick = {
+                        val key = apiKeyInput.trim()
+                        if (key.isEmpty()) {
+                            actionNotification = "Masukkan API Key terlebih dahulu untuk melihat model."
+                            return@RinovaSurfaceCard
+                        }
+                        if (availableModels.isEmpty()) {
                             isFetchingModels = true
                             coroutineScope.launch {
                                 settingsRepository.saveGeminiApiKey(key)
                                 val res = aiRepository.fetchAvailableModels(key)
                                 isFetchingModels = false
                                 res.fold(
-                                    onSuccess = { models ->
-                                        actionNotification = "Berhasil memuat ${models.size} model aktif dari API."
-                                        if (models.isNotEmpty() && !models.any { it.id == selectedModel }) {
-                                            selectedModel = models.first().id
-                                        }
+                                    onSuccess = {
+                                        showModelPickerSheet = true
                                     },
-                                    onFailure = { actionNotification = it.localizedMessage }
+                                    onFailure = {
+                                        actionNotification = "Gagal memuat model: ${it.localizedMessage}"
+                                    }
                                 )
                             }
-                        },
-                        enabled = !isFetchingModels,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = null,
-                            tint = CyanPrimary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (isFetchingModels) "Memuat..." else "Muat Model", color = TextPrimary, fontSize = 11.sp)
+                        } else {
+                            showModelPickerSheet = true
+                        }
                     }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Model Gemini Aktif",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = selectedModel,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = if (availableModels.isNotEmpty()) "${availableModels.size} model aktif terdeteksi • Ketuk untuk ganti" else "Ketuk untuk mendeteksi seluruh model dari API",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF6B7280)
+                            )
+                        }
+                        RinovaTactileButton(
+                            text = if (isFetchingModels) "Memuat..." else "Pilih Model",
+                            onClick = {
+                                val key = apiKeyInput.trim()
+                                if (key.isEmpty()) {
+                                    actionNotification = "Masukkan API Key terlebih dahulu."
+                                    return@RinovaTactileButton
+                                }
+                                if (availableModels.isEmpty()) {
+                                    isFetchingModels = true
+                                    coroutineScope.launch {
+                                        settingsRepository.saveGeminiApiKey(key)
+                                        val res = aiRepository.fetchAvailableModels(key)
+                                        isFetchingModels = false
+                                        res.fold(
+                                            onSuccess = { showModelPickerSheet = true },
+                                            onFailure = { actionNotification = it.localizedMessage }
+                                        )
+                                    }
+                                } else {
+                                    showModelPickerSheet = true
+                                }
+                            },
+                            isSecondary = true,
+                            height = 36.dp
+                        )
+                    }
+                }
 
-                    OutlinedButton(
+                // Action Row: Uji Limit & Latency
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    RinovaTactileButton(
+                        text = if (isTestingModel) "Menguji..." else "Tes Limit & Key",
+                        icon = Icons.Default.Speed,
                         onClick = {
                             val key = apiKeyInput.trim()
                             if (key.isEmpty()) {
                                 actionNotification = "Masukkan API Key terlebih dahulu."
-                                return@OutlinedButton
+                                return@RinovaTactileButton
                             }
                             isTestingModel = true
                             coroutineScope.launch {
@@ -361,36 +374,57 @@ fun AiDiagnosticScreen(
                                 isTestingModel = false
                                 res.fold(
                                     onSuccess = {
-                                        actionNotification = if (it.isHealthy) "Model ${it.modelName} siap digunakan!" else "Model mengalami kendala: ${it.statusMessage}"
+                                        actionNotification = if (it.isHealthy) "Model ${it.modelName} siap! Latency ${it.latencyMs}ms." else "Kendala: ${it.statusMessage}"
                                     },
                                     onFailure = { actionNotification = it.localizedMessage }
                                 )
                             }
                         },
-                        enabled = !isTestingModel,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Speed,
-                            contentDescription = null,
-                            tint = StatusWarning,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (isTestingModel) "Menguji..." else "Tes Limit & Key", color = StatusWarning, fontSize = 11.sp)
-                    }
+                        isSecondary = true,
+                        modifier = Modifier.weight(1f),
+                        height = 42.dp
+                    )
+
+                    RinovaTactileButton(
+                        text = if (isFetchingModels) "Memuat..." else "Sinkron Model",
+                        icon = Icons.Default.Refresh,
+                        onClick = {
+                            val key = apiKeyInput.trim()
+                            if (key.isEmpty()) {
+                                actionNotification = "Masukkan API Key terlebih dahulu."
+                                return@RinovaTactileButton
+                            }
+                            isFetchingModels = true
+                            coroutineScope.launch {
+                                settingsRepository.saveGeminiApiKey(key)
+                                val res = aiRepository.fetchAvailableModels(key)
+                                isFetchingModels = false
+                                res.fold(
+                                    onSuccess = {
+                                        actionNotification = "Berhasil memuat ${it.size} model resmi Google AI."
+                                        showModelPickerSheet = true
+                                    },
+                                    onFailure = { actionNotification = it.localizedMessage }
+                                )
+                            }
+                        },
+                        isSecondary = true,
+                        modifier = Modifier.weight(1f),
+                        height = 42.dp
+                    )
                 }
 
-                // Audit AI Button
-                Button(
+                // Primary Run AI Audit Button
+                RinovaTactileButton(
+                    text = if (isAnalyzing) "Menganalisis Sistem..." else "Audit AI Berbasis Data Empiris",
+                    icon = Icons.Default.AutoAwesome,
                     onClick = {
                         focusManager.clearFocus()
                         val key = apiKeyInput.trim()
                         val model = selectedModel.trim()
                         if (key.isEmpty()) {
                             actionNotification = "Masukkan API Key terlebih dahulu."
-                            return@Button
+                            return@RinovaTactileButton
                         }
                         coroutineScope.launch {
                             settingsRepository.saveGeminiApiKey(key)
@@ -403,23 +437,9 @@ fun AiDiagnosticScreen(
                         }
                     },
                     enabled = !isAnalyzing,
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        tint = CyanOnPrimary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (isAnalyzing) "Menganalisis Sistem..." else "Audit AI Berbasis Data Empiris",
-                        color = CyanOnPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                    modifier = Modifier.fillMaxWidth(),
+                    height = 50.dp
+                )
             }
         }
 
@@ -427,10 +447,9 @@ fun AiDiagnosticScreen(
         if (testResult != null) {
             val tr = testResult!!
             val bannerColor = if (tr.isHealthy) StatusSafe else StatusCritical
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                modifier = Modifier.fillMaxWidth()
+            RinovaSurfaceCard(
+                modifier = Modifier.fillMaxWidth(),
+                shapeRadius = 14.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -455,8 +474,8 @@ fun AiDiagnosticScreen(
                             )
                             Text(
                                 text = "Hasil Uji Model: ${tr.modelName}",
-                                color = TextPrimary,
-                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -469,7 +488,7 @@ fun AiDiagnosticScreen(
                             Text(
                                 text = "${tr.latencyMs} ms",
                                 color = bannerColor,
-                                fontSize = 11.sp,
+                                style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -477,8 +496,8 @@ fun AiDiagnosticScreen(
 
                     Text(
                         text = tr.statusMessage,
-                        color = TextSecondary,
-                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
                         lineHeight = 16.sp
                     )
 
@@ -489,14 +508,14 @@ fun AiDiagnosticScreen(
                         Text(
                             text = "Status Quota: ${tr.quotaStatus}",
                             color = if (tr.quotaStatus.contains("Habis") || tr.quotaStatus.contains("Error")) StatusCritical else StatusSafe,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold
                         )
                         if (tr.inputTokenLimit > 0L) {
                             Text(
                                 text = "Token Limit: ${tr.inputTokenLimit / 1000}k in / ${tr.outputTokenLimit / 1000}k out",
-                                color = CyanPrimary,
-                                fontSize = 11.sp
+                                color = Primary,
+                                style = MaterialTheme.typography.labelSmall
                             )
                         }
                     }
@@ -505,16 +524,15 @@ fun AiDiagnosticScreen(
         }
 
         if (actionNotification != null) {
-            Card(
-                shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.cardColors(containerColor = SlateSurfaceHighlight),
-                modifier = Modifier.fillMaxWidth()
+            RinovaSurfaceCard(
+                modifier = Modifier.fillMaxWidth(),
+                shapeRadius = 14.dp
             ) {
                 Text(
                     text = actionNotification ?: "",
-                    color = TextPrimary,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(12.dp)
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(14.dp)
                 )
             }
         }
@@ -527,10 +545,9 @@ fun AiDiagnosticScreen(
             val r = report!!
 
             // Health Score & Summary
-            Card(
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                modifier = Modifier.fillMaxWidth()
+            RinovaSurfaceCard(
+                modifier = Modifier.fillMaxWidth(),
+                shapeRadius = 16.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -546,15 +563,15 @@ fun AiDiagnosticScreen(
                         Column {
                             Text(
                                 text = "Skor Kesehatan Sistem",
-                                color = TextPrimary,
-                                fontSize = 15.sp,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Bold
                             )
                             if (r.modelUsed.isNotEmpty()) {
                                 Text(
                                     text = "Dianalisis oleh: ${r.modelUsed}",
-                                    color = CyanPrimary,
-                                    fontSize = 11.sp
+                                    color = Primary,
+                                    style = MaterialTheme.typography.labelSmall
                                 )
                             }
                         }
@@ -569,15 +586,15 @@ fun AiDiagnosticScreen(
                             Text(
                                 text = "${r.overallHealthScore} / 100",
                                 color = if (r.overallHealthScore >= 80) StatusSafe else StatusWarning,
-                                fontSize = 14.sp,
+                                style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
                         }
                     }
                     Text(
                         text = r.deviceSummary,
-                        color = TextSecondary,
-                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
                         lineHeight = 18.sp
                     )
                 }
@@ -587,19 +604,18 @@ fun AiDiagnosticScreen(
             if (r.empiricalObservations.isNotEmpty()) {
                 Text(
                     text = "Temuan Fakta Empiris di Sistem",
-                    color = TextPrimary,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                    modifier = Modifier.fillMaxWidth()
+                RinovaSurfaceCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shapeRadius = 14.dp
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
+                            .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         r.empiricalObservations.forEach { obs ->
@@ -607,8 +623,13 @@ fun AiDiagnosticScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("•", color = CyanPrimary, fontWeight = FontWeight.Bold)
-                                Text(obs, color = TextPrimary, fontSize = 12.sp, lineHeight = 16.sp)
+                                Text("•", color = Primary, fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = obs,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    lineHeight = 16.sp
+                                )
                             }
                         }
                     }
@@ -619,8 +640,8 @@ fun AiDiagnosticScreen(
             if (r.recommendations.isNotEmpty()) {
                 Text(
                     text = "Rekomendasi Tindakan Terkontrol (${r.recommendations.size})",
-                    color = TextPrimary,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
 
@@ -636,16 +657,15 @@ fun AiDiagnosticScreen(
                         AiActionRisk.CRITICAL_KEEP -> "JANGAN DISENTUH (KRITIS)"
                     }
 
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                        modifier = Modifier.fillMaxWidth()
+                    RinovaSurfaceCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shapeRadius = 16.dp
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -654,8 +674,8 @@ fun AiDiagnosticScreen(
                             ) {
                                 Text(
                                     text = rec.proposedActionTitle,
-                                    color = TextPrimary,
-                                    fontSize = 14.sp,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.weight(1f)
                                 )
@@ -668,7 +688,7 @@ fun AiDiagnosticScreen(
                                     Text(
                                         text = badgeText,
                                         color = badgeColor,
-                                        fontSize = 10.sp,
+                                        style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -676,23 +696,22 @@ fun AiDiagnosticScreen(
 
                             Text(
                                 text = rec.empiricalEvidence,
-                                color = TextSecondary,
-                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
                                 lineHeight = 16.sp
                             )
 
                             if (rec.adbCommand.isNotEmpty()) {
-                                Card(
-                                    shape = RoundedCornerShape(6.dp),
-                                    colors = CardDefaults.cardColors(containerColor = SlateSurfaceVariant),
+                                RinovaSurfaceCard(
+                                    shapeRadius = 8.dp,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
                                         text = rec.adbCommand,
-                                        color = CyanPrimary,
-                                        fontSize = 11.sp,
+                                        color = Primary,
+                                        style = MaterialTheme.typography.bodySmall,
                                         fontFamily = FontFamily.Monospace,
-                                        modifier = Modifier.padding(8.dp)
+                                        modifier = Modifier.padding(10.dp)
                                     )
                                 }
                             }
@@ -701,18 +720,12 @@ fun AiDiagnosticScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End
                             ) {
-                                Button(
+                                RinovaTactileButton(
+                                    text = if (rec.riskLevel == AiActionRisk.CRITICAL_KEEP) "Tinjau Larangan" else "Tinjau & Eksekusi",
                                     onClick = { pendingRecommendation = rec },
-                                    colors = ButtonDefaults.buttonColors(containerColor = badgeColor),
-                                    shape = RoundedCornerShape(6.dp)
-                                ) {
-                                    Text(
-                                        text = if (rec.riskLevel == AiActionRisk.CRITICAL_KEEP) "Tinjau Larangan" else "Tinjau & Eksekusi",
-                                        color = if (rec.riskLevel == AiActionRisk.CRITICAL_KEEP) Color.White else Color.Black,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                    isSecondary = rec.riskLevel != AiActionRisk.SAFE_ACTION,
+                                    height = 36.dp
+                                )
                             }
                         }
                     }
@@ -723,61 +736,52 @@ fun AiDiagnosticScreen(
             if (r.optimizations.isNotEmpty()) {
                 Text(
                     text = "Saran Optimalisasi Sistem",
-                    color = TextPrimary,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold
                 )
 
                 r.optimizations.forEach { opt ->
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                        modifier = Modifier.fillMaxWidth()
+                    RinovaSurfaceCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shapeRadius = 16.dp
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(14.dp),
+                                .padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
                                 text = opt.title,
-                                color = TextPrimary,
-                                fontSize = 14.sp,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = "${opt.rationale} • Dampak: ${opt.estimatedImpact}",
-                                color = TextSecondary,
-                                fontSize = 12.sp
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End
                             ) {
-                                OutlinedButton(
+                                RinovaTactileButton(
+                                    text = "Terapkan",
                                     onClick = { pendingOptimization = opt },
-                                    shape = RoundedCornerShape(6.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = null,
-                                        tint = CyanPrimary,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Terapkan", color = CyanPrimary, fontSize = 12.sp)
-                                }
+                                    icon = Icons.Default.PlayArrow,
+                                    height = 36.dp
+                                )
                             }
                         }
                     }
                 }
             }
         } else {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                modifier = Modifier.fillMaxWidth()
+            RinovaSurfaceCard(
+                modifier = Modifier.fillMaxWidth(),
+                shapeRadius = 16.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -787,14 +791,14 @@ fun AiDiagnosticScreen(
                 ) {
                     Text(
                         text = "Belum Ada Hasil Audit",
-                        color = TextPrimary,
-                        fontSize = 15.sp,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "Pastikan HP target terhubung dan API Key telah disimpan, lalu tekan 'Audit AI Berbasis Data Empiris' untuk menganalisis seluruh data telemetri, storage, dan aplikasi berisiko.",
-                        color = TextSecondary,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 18.sp
                     )
                 }

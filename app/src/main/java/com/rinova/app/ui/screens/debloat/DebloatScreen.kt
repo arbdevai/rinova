@@ -17,19 +17,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -57,18 +50,14 @@ import com.rinova.app.core.util.VendorProfileDetector
 import com.rinova.app.data.repository.DebloatRepository
 import com.rinova.app.ui.components.AlertType
 import com.rinova.app.ui.components.CustomActionDialog
+import com.rinova.app.ui.components.RinovaSurfaceCard
+import com.rinova.app.ui.components.RinovaTactileButton
 import com.rinova.app.ui.components.SkeletonListItem
-import com.rinova.app.ui.theme.CyanOnPrimary
-import com.rinova.app.ui.theme.CyanPrimary
-import com.rinova.app.ui.theme.SlateBackground
-import com.rinova.app.ui.theme.SlateSurface
-import com.rinova.app.ui.theme.SlateSurfaceHighlight
-import com.rinova.app.ui.theme.SlateSurfaceVariant
+import com.rinova.app.ui.theme.Primary
+import com.rinova.app.ui.theme.PrimaryContainer
 import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
-import com.rinova.app.ui.theme.TextPrimary
-import com.rinova.app.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 
 @Composable
@@ -135,7 +124,7 @@ fun DebloatScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(SlateBackground)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -143,8 +132,8 @@ fun DebloatScreen(
         // Vendor Selection Horizontal Carousel
         Text(
             text = "Kategori Vendor Perangkat",
-            color = TextPrimary,
-            fontSize = 15.sp,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold
         )
 
@@ -164,12 +153,12 @@ fun DebloatScreen(
                             debloatRepository.loadDebloatList(cat)
                         }
                     },
-                    label = { Text(cat.displayName, fontSize = 12.sp) },
+                    label = { Text(cat.displayName, style = MaterialTheme.typography.labelSmall) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = CyanPrimary,
-                        selectedLabelColor = CyanOnPrimary,
-                        containerColor = SlateSurface,
-                        labelColor = TextSecondary
+                        selectedContainerColor = Primary,
+                        selectedLabelColor = Color.White,
+                        containerColor = Color(0xFF16191F),
+                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 )
             }
@@ -183,49 +172,48 @@ fun DebloatScreen(
             FilterChip(
                 selected = riskFilter == null,
                 onClick = { riskFilter = null },
-                label = { Text("Semua", fontSize = 12.sp) },
+                label = { Text("Semua", style = MaterialTheme.typography.labelSmall) },
                 colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = CyanPrimary,
-                    selectedLabelColor = CyanOnPrimary,
-                    containerColor = SlateSurface,
-                    labelColor = TextSecondary
+                    selectedContainerColor = Primary,
+                    selectedLabelColor = Color.White,
+                    containerColor = Color(0xFF16191F),
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
             FilterChip(
                 selected = riskFilter == DebloatRisk.SAFE,
                 onClick = { riskFilter = DebloatRisk.SAFE },
-                label = { Text("Aman Dihapus", fontSize = 12.sp) },
+                label = { Text("Aman Dihapus", style = MaterialTheme.typography.labelSmall) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = StatusSafe,
                     selectedLabelColor = Color.Black,
-                    containerColor = SlateSurface,
-                    labelColor = TextSecondary
+                    containerColor = Color(0xFF16191F),
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
             FilterChip(
                 selected = riskFilter == DebloatRisk.ADVANCED,
                 onClick = { riskFilter = DebloatRisk.ADVANCED },
-                label = { Text("Lanjutan", fontSize = 12.sp) },
+                label = { Text("Lanjutan", style = MaterialTheme.typography.labelSmall) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = StatusWarning,
                     selectedLabelColor = Color.Black,
-                    containerColor = SlateSurface,
-                    labelColor = TextSecondary
+                    containerColor = Color(0xFF16191F),
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
         }
 
         if (actionNotification != null) {
-            Card(
-                shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.cardColors(containerColor = SlateSurfaceHighlight),
-                modifier = Modifier.fillMaxWidth()
+            RinovaSurfaceCard(
+                modifier = Modifier.fillMaxWidth(),
+                shapeRadius = 14.dp
             ) {
                 Text(
                     text = actionNotification ?: "",
-                    color = TextPrimary,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(12.dp)
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(14.dp)
                 )
             }
         }
@@ -242,41 +230,34 @@ fun DebloatScreen(
         ) {
             Text(
                 text = "Daftar Paket Vendor (${filteredList.size})",
-                color = TextPrimary,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
             )
-            OutlinedButton(
+            RinovaTactileButton(
+                text = "Refresh",
                 onClick = {
                     coroutineScope.launch {
                         debloatRepository.loadDebloatList(selectedVendor)
                     }
                 },
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = null,
-                    tint = CyanPrimary,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Refresh", color = TextPrimary, fontSize = 12.sp)
-            }
+                icon = Icons.Default.Refresh,
+                isSecondary = true,
+                height = 36.dp
+            )
         }
 
         if (isLoading) {
             repeat(3) { SkeletonListItem() }
         } else if (filteredList.isEmpty()) {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                modifier = Modifier.fillMaxWidth()
+            RinovaSurfaceCard(
+                modifier = Modifier.fillMaxWidth(),
+                shapeRadius = 16.dp
             ) {
                 Text(
                     text = "Tidak ada paket yang sesuai dengan filter saat ini.",
-                    color = TextSecondary,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(16.dp)
                 )
             }
@@ -324,15 +305,14 @@ private fun DebloatPackageCard(
         DebloatRisk.CRITICAL -> StatusCritical
     }
 
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = SlateSurface),
-        modifier = Modifier.fillMaxWidth()
+    RinovaSurfaceCard(
+        modifier = Modifier.fillMaxWidth(),
+        shapeRadius = 16.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
@@ -343,28 +323,28 @@ private fun DebloatPackageCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = pkg.appLabel,
-                        color = TextPrimary,
-                        fontSize = 15.sp,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = pkg.packageName,
-                        color = TextSecondary,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontFamily = FontFamily.Monospace,
                         maxLines = 1
                     )
                 }
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .background(riskColor.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = if (pkg.risk == DebloatRisk.SAFE) "Aman Dihapus" else "Lanjutan",
                         color = riskColor,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -372,8 +352,8 @@ private fun DebloatPackageCard(
 
             Text(
                 text = pkg.description,
-                color = TextSecondary,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 16.sp
             )
 
@@ -387,11 +367,11 @@ private fun DebloatPackageCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     val statusLabel = if (!pkg.isInstalled) "Dicopot" else if (pkg.isEnabled) "Aktif" else "Dinonaktifkan"
-                    val statusColor = if (!pkg.isInstalled) TextSecondary else if (pkg.isEnabled) StatusSafe else StatusWarning
+                    val statusColor = if (!pkg.isInstalled) MaterialTheme.colorScheme.onSurfaceVariant else if (pkg.isEnabled) StatusSafe else StatusWarning
                     Text(
                         text = "Status: $statusLabel",
                         color = statusColor,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -402,33 +382,25 @@ private fun DebloatPackageCard(
                             checked = pkg.isEnabled,
                             onCheckedChange = { onToggle() },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = CyanPrimary,
-                                checkedTrackColor = CyanPrimary.copy(alpha = 0.5f),
-                                uncheckedThumbColor = TextSecondary,
-                                uncheckedTrackColor = SlateSurfaceHighlight
+                                checkedThumbColor = Primary,
+                                checkedTrackColor = Primary.copy(alpha = 0.5f),
+                                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                uncheckedTrackColor = Color(0xFF282D38)
                             )
                         )
-                        OutlinedButton(
+                        RinovaTactileButton(
+                            text = "Copot",
                             onClick = onUninstall,
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Text("Copot", color = StatusCritical, fontSize = 11.sp)
-                        }
+                            isSecondary = true,
+                            height = 36.dp
+                        )
                     } else {
-                        Button(
+                        RinovaTactileButton(
+                            text = "Pulihkan",
                             onClick = onRestore,
-                            colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                            shape = RoundedCornerShape(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Restore,
-                                contentDescription = null,
-                                tint = CyanOnPrimary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Pulihkan", color = CyanOnPrimary, fontSize = 11.sp)
-                        }
+                            icon = Icons.Default.Restore,
+                            height = 36.dp
+                        )
                     }
                 }
             }

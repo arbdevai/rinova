@@ -26,19 +26,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Pin
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Router
+import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -63,6 +59,9 @@ import com.rinova.app.core.model.AdbConnectionState
 import com.rinova.app.core.util.QrCodeGenerator
 import com.rinova.app.data.repository.AdbRepository
 import com.rinova.app.data.repository.SettingsRepository
+import com.rinova.app.ui.components.RinovaSurfaceCard
+import com.rinova.app.ui.components.RinovaTactileButton
+import com.rinova.app.ui.components.RinovaTextField
 import com.rinova.app.ui.theme.Outline
 import com.rinova.app.ui.theme.OutlineVariant
 import com.rinova.app.ui.theme.Primary
@@ -70,8 +69,6 @@ import com.rinova.app.ui.theme.PrimaryContainer
 import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
-import com.rinova.app.ui.theme.SurfaceContainerHigh
-import com.rinova.app.ui.theme.SurfaceContainerLow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -140,16 +137,14 @@ fun ConnectScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Status Card
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
-            modifier = Modifier.fillMaxWidth()
+        RinovaSurfaceCard(
+            modifier = Modifier.fillMaxWidth(),
+            shapeRadius = 18.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(18.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
@@ -170,7 +165,7 @@ fun ConnectScreen(
                         connectionState.message
                     )
                     is AdbConnectionState.Disconnected -> Triple(
-                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        Color(0xFF9CA3AF),
                         "Belum Terhubung",
                         "Pilih metode sambungan di bawah untuk mulai"
                     )
@@ -178,9 +173,10 @@ fun ConnectScreen(
 
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(46.dp)
                         .clip(CircleShape)
-                        .background(color.copy(alpha = 0.15f)),
+                        .background(color.copy(alpha = 0.15f))
+                        .border(1.dp, color.copy(alpha = 0.4f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -195,7 +191,8 @@ fun ConnectScreen(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
@@ -208,13 +205,13 @@ fun ConnectScreen(
             }
         }
 
-        // Segmented Mode Switcher (Google Material 3 Container)
+        // Segmented Mode Switcher (Sleek Industrial Tab Strip)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(SurfaceContainerLow)
-                .border(1.dp, OutlineVariant, RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFF14171E))
+                .border(0.8.dp, OutlineVariant, RoundedCornerShape(16.dp))
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -229,14 +226,14 @@ fun ConnectScreen(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(if (isSelected) PrimaryContainer else Color.Transparent)
                         .clickable {
                             selectedTab = index
                             errorMessage = null
                             statusFeedbackMessage = null
                         }
-                        .padding(vertical = 10.dp),
+                        .padding(vertical = 11.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
@@ -246,13 +243,13 @@ fun ConnectScreen(
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = if (isSelected) Primary else Color(0xFF9CA3AF),
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = title,
                             style = MaterialTheme.typography.labelMedium,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (isSelected) Color(0xFFFFFFFF) else Color(0xFF9CA3AF),
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                         )
                     }
@@ -261,17 +258,15 @@ fun ConnectScreen(
         }
 
         // Form Card per Mode
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
-            modifier = Modifier.fillMaxWidth()
+        RinovaSurfaceCard(
+            modifier = Modifier.fillMaxWidth(),
+            shapeRadius = 18.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 when (selectedTab) {
                     0 -> {
@@ -279,7 +274,8 @@ fun ConnectScreen(
                         Text(
                             text = "Koneksi Langsung (Sudah Pernah Di-Pair)",
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Gunakan mode ini jika ponsel sudah pernah dipasangkan sebelumnya atau port ADB default (5555).",
@@ -288,25 +284,23 @@ fun ConnectScreen(
                             lineHeight = 16.sp
                         )
 
-                        OutlinedTextField(
+                        RinovaTextField(
                             value = ipInput,
                             onValueChange = { ipInput = it },
-                            label = { Text("Alamat IP HP Target") },
-                            placeholder = { Text("Contoh: 192.168.1.14") },
-                            singleLine = true,
+                            label = "Alamat IP HP Target",
+                            placeholder = "Contoh: 192.168.1.14",
+                            leadingIcon = Icons.Default.Wifi,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = m3OutlinedColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        OutlinedTextField(
+                        RinovaTextField(
                             value = portInput,
                             onValueChange = { portInput = it },
-                            label = { Text("Port ADB Wireless Utama") },
-                            placeholder = { Text("Contoh: 39485 atau 5555") },
-                            singleLine = true,
+                            label = "Port ADB Wireless Utama",
+                            placeholder = "Contoh: 39485 atau 5555",
+                            leadingIcon = Icons.Default.Router,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = m3OutlinedColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -316,7 +310,8 @@ fun ConnectScreen(
                         Text(
                             text = "Pairing Kode 6-Digit (Android 11 - 14+)",
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Di HP target: Masuk ke Pengaturan > Opsi Pengembang > Debugging Nirkabel > 'Sandingkan perangkat dengan kode pemasangan'.",
@@ -325,14 +320,13 @@ fun ConnectScreen(
                             lineHeight = 16.sp
                         )
 
-                        OutlinedTextField(
+                        RinovaTextField(
                             value = ipInput,
                             onValueChange = { ipInput = it },
-                            label = { Text("Alamat IP HP Target") },
-                            placeholder = { Text("Contoh: 192.168.1.14") },
-                            singleLine = true,
+                            label = "Alamat IP HP Target",
+                            placeholder = "Contoh: 192.168.1.14",
+                            leadingIcon = Icons.Default.Wifi,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = m3OutlinedColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -340,37 +334,34 @@ fun ConnectScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            OutlinedTextField(
+                            RinovaTextField(
                                 value = pairingPortInput,
                                 onValueChange = { pairingPortInput = it },
-                                label = { Text("Port Pairing") },
-                                placeholder = { Text("Misal: 37393") },
-                                singleLine = true,
+                                label = "Port Pairing",
+                                placeholder = "Misal: 37393",
+                                leadingIcon = Icons.Default.Tag,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                colors = m3OutlinedColors(),
                                 modifier = Modifier.weight(1f)
                             )
 
-                            OutlinedTextField(
+                            RinovaTextField(
                                 value = pairingCodeInput,
                                 onValueChange = { if (it.length <= 6) pairingCodeInput = it },
-                                label = { Text("Kode 6 Digit") },
-                                placeholder = { Text("Misal: 102118") },
-                                singleLine = true,
+                                label = "Kode 6 Digit",
+                                placeholder = "Misal: 102118",
+                                leadingIcon = Icons.Default.Pin,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                colors = m3OutlinedColors(),
                                 modifier = Modifier.weight(1f)
                             )
                         }
 
-                        OutlinedTextField(
+                        RinovaTextField(
                             value = portInput,
                             onValueChange = { portInput = it },
-                            label = { Text("Port Koneksi ADB Utama (Di luar dialog pairing)") },
-                            placeholder = { Text("Misal: 39485") },
-                            singleLine = true,
+                            label = "Port Koneksi ADB Utama",
+                            placeholder = "Port di luar dialog pairing (misal: 39485)",
+                            leadingIcon = Icons.Default.Router,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = m3OutlinedColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -380,7 +371,8 @@ fun ConnectScreen(
                         Text(
                             text = "Pairing QR Code Nirkabel (AOSP Standard)",
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Di HP target: Buka menu Debugging Nirkabel > 'Sandingkan perangkat dengan kode QR' lalu arahkan kamera target ke QR Code ini.",
@@ -389,27 +381,28 @@ fun ConnectScreen(
                             lineHeight = 16.sp
                         )
 
-                        // QR Code High-Contrast Frame
+                        // QR Code High-Contrast Frame with precision viewport
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(SurfaceContainerHigh)
-                                .border(1.dp, OutlineVariant, RoundedCornerShape(16.dp))
-                                .padding(16.dp),
+                                .background(Color(0xFF0F1116))
+                                .border(1.dp, Primary.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                .padding(18.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 if (qrBitmap != null) {
                                     Box(
                                         modifier = Modifier
-                                            .size(208.dp)
-                                            .clip(RoundedCornerShape(12.dp))
+                                            .size(210.dp)
+                                            .clip(RoundedCornerShape(14.dp))
                                             .background(Color.White)
-                                            .padding(10.dp),
+                                            .border(2.dp, Primary, RoundedCornerShape(14.dp))
+                                            .padding(12.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Image(
@@ -441,42 +434,34 @@ fun ConnectScreen(
                                         )
                                     }
 
-                                    OutlinedButton(
+                                    RinovaTactileButton(
+                                        text = "Acak QR",
                                         onClick = { regenerateQrCode() },
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Refresh,
-                                            contentDescription = null,
-                                            tint = Primary,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Acak QR", style = MaterialTheme.typography.labelSmall)
-                                    }
+                                        icon = Icons.Default.Refresh,
+                                        isSecondary = true,
+                                        height = 36.dp
+                                    )
                                 }
                             }
                         }
 
-                        OutlinedTextField(
+                        RinovaTextField(
                             value = ipInput,
                             onValueChange = { ipInput = it },
-                            label = { Text("Alamat IP HP Target") },
-                            placeholder = { Text("Contoh: 192.168.1.14") },
-                            singleLine = true,
+                            label = "Alamat IP HP Target",
+                            placeholder = "Contoh: 192.168.1.14",
+                            leadingIcon = Icons.Default.Wifi,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = m3OutlinedColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        OutlinedTextField(
+                        RinovaTextField(
                             value = portInput,
                             onValueChange = { portInput = it },
-                            label = { Text("Port Koneksi ADB Target") },
-                            placeholder = { Text("Misal: 39485") },
-                            singleLine = true,
+                            label = "Port Koneksi ADB Target",
+                            placeholder = "Misal: 39485",
+                            leadingIcon = Icons.Default.Router,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = m3OutlinedColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -504,27 +489,32 @@ fun ConnectScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        OutlinedButton(
+                        RinovaTactileButton(
+                            text = "Putuskan",
                             onClick = {
                                 coroutineScope.launch {
                                     adbRepository.disconnect()
                                 }
                             },
-                            shape = RoundedCornerShape(10.dp),
+                            isSecondary = true,
                             modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Putuskan", color = StatusCritical, style = MaterialTheme.typography.labelMedium)
-                        }
-                        Button(
+                        )
+                        RinovaTactileButton(
+                            text = "Buka Dashboard",
                             onClick = onConnectSuccess,
-                            shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Buka Dashboard", style = MaterialTheme.typography.labelMedium)
-                        }
+                        )
                     }
                 } else {
-                    Button(
+                    val buttonText = when {
+                        isSubmitting -> "Sedang Memproses..."
+                        selectedTab == 1 -> "Pair & Hubungkan Otomatis"
+                        selectedTab == 2 -> "Hubungkan Setelah Scan QR"
+                        else -> "Hubungkan ADB Wireless"
+                    }
+
+                    RinovaTactileButton(
+                        text = buttonText,
                         onClick = {
                             focusManager.clearFocus()
                             val cleanIp = ipInput.trim()
@@ -532,7 +522,7 @@ fun ConnectScreen(
 
                             if (cleanIp.isEmpty() || cleanConnectPort == null) {
                                 errorMessage = "Alamat IP atau Port Koneksi tidak valid"
-                                return@Button
+                                return@RinovaTactileButton
                             }
 
                             errorMessage = null
@@ -581,38 +571,22 @@ fun ConnectScreen(
                             }
                         },
                         enabled = !isSubmitting,
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                    ) {
-                        val buttonText = when {
-                            isSubmitting -> "Sedang Memproses..."
-                            selectedTab == 1 -> "Pair & Hubungkan Otomatis"
-                            selectedTab == 2 -> "Hubungkan Setelah Scan QR"
-                            else -> "Hubungkan ADB Wireless"
-                        }
-                        Text(
-                            text = buttonText,
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
 
-        // Panduan Lapangan Teknisi Card (Google M3 Accordion Style)
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
-            modifier = Modifier.fillMaxWidth()
+        // Panduan Lapangan Teknisi Card
+        RinovaSurfaceCard(
+            modifier = Modifier.fillMaxWidth(),
+            shapeRadius = 18.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -627,7 +601,8 @@ fun ConnectScreen(
                     Text(
                         text = "Panduan Lapangan Teknisi (Android 11 - 14+):",
                         style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
@@ -662,14 +637,3 @@ fun ConnectScreen(
         }
     }
 }
-
-@Composable
-private fun m3OutlinedColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = MaterialTheme.colorScheme.primary,
-    unfocusedBorderColor = Outline,
-    focusedLabelColor = MaterialTheme.colorScheme.primary,
-    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-    cursorColor = MaterialTheme.colorScheme.primary
-)

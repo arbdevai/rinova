@@ -22,13 +22,9 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FolderOff
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SdStorage
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,20 +47,15 @@ import com.rinova.app.core.util.FileSizeFormatter
 import com.rinova.app.data.repository.StorageRepository
 import com.rinova.app.ui.components.AlertType
 import com.rinova.app.ui.components.CustomActionDialog
+import com.rinova.app.ui.components.RinovaSurfaceCard
+import com.rinova.app.ui.components.RinovaTactileButton
 import com.rinova.app.ui.components.ScanningProgressSheet
-import com.rinova.app.ui.components.SkeletonCard
 import com.rinova.app.ui.components.SkeletonListItem
-import com.rinova.app.ui.theme.CyanOnPrimary
-import com.rinova.app.ui.theme.CyanPrimary
-import com.rinova.app.ui.theme.SlateBackground
-import com.rinova.app.ui.theme.SlateSurface
-import com.rinova.app.ui.theme.SlateSurfaceHighlight
-import com.rinova.app.ui.theme.SlateSurfaceVariant
+import com.rinova.app.ui.theme.Primary
+import com.rinova.app.ui.theme.PrimaryContainer
 import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
-import com.rinova.app.ui.theme.TextPrimary
-import com.rinova.app.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 
 @Composable
@@ -110,7 +101,7 @@ fun StorageScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(SlateBackground)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -126,16 +117,15 @@ fun StorageScreen(
         }
 
         // Storage Overview Card
-        Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SlateSurface),
-            modifier = Modifier.fillMaxWidth()
+        RinovaSurfaceCard(
+            modifier = Modifier.fillMaxWidth(),
+            shapeRadius = 18.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -145,28 +135,28 @@ fun StorageScreen(
                     Column {
                         Text(
                             text = "Partisi Penyimpanan Internal (/data)",
-                            color = TextPrimary,
-                            fontSize = 15.sp,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = "Inspeksi diskstats & direktori riil sistem",
-                            color = TextSecondary,
-                            fontSize = 12.sp
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(CyanPrimary.copy(alpha = 0.15f)),
+                            .size(42.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(PrimaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.SdStorage,
                             contentDescription = null,
-                            tint = CyanPrimary,
-                            modifier = Modifier.size(20.dp)
+                            tint = Primary,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -179,8 +169,8 @@ fun StorageScreen(
                             .fillMaxWidth()
                             .height(10.dp)
                             .clip(RoundedCornerShape(5.dp)),
-                        color = if (percentUsed > 0.9f) StatusCritical else CyanPrimary,
-                        trackColor = SlateSurfaceHighlight
+                        color = if (percentUsed > 0.9f) StatusCritical else Primary,
+                        trackColor = Color(0xFF282D38)
                     )
 
                     Row(
@@ -189,22 +179,22 @@ fun StorageScreen(
                     ) {
                         Text(
                             text = "Terpakai: ${FileSizeFormatter.format(storageState.usedBytes)} (${(percentUsed * 100).toInt()}%)",
-                            color = TextPrimary,
-                            fontSize = 13.sp,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Medium
                         )
                         Text(
                             text = "Bebas: ${FileSizeFormatter.format(storageState.freeBytes)}",
+                            style = MaterialTheme.typography.bodySmall,
                             color = StatusSafe,
-                            fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 } else {
                     Text(
                         text = "Data penyimpanan belum dipindai. Tekan tombol di bawah untuk memulai.",
-                        color = TextSecondary,
-                        fontSize = 13.sp
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -212,7 +202,8 @@ fun StorageScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Button(
+                    RinovaTactileButton(
+                        text = if (storageState.isAnalyzing) "Memindai..." else "Pindai Mendalam",
                         onClick = {
                             showScanSheet = true
                             progressVal = 0.1f
@@ -224,25 +215,12 @@ fun StorageScreen(
                                 showScanSheet = false
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                        shape = RoundedCornerShape(8.dp),
+                        icon = Icons.Default.Refresh,
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = null,
-                            tint = CyanOnPrimary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (storageState.isAnalyzing) "Memindai..." else "Pindai Mendalam",
-                            color = CyanOnPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    )
 
-                    OutlinedButton(
+                    RinovaTactileButton(
+                        text = "Trim Cache",
                         onClick = {
                             coroutineScope.launch {
                                 val res = storageRepository.trimSystemCaches()
@@ -252,33 +230,24 @@ fun StorageScreen(
                                 )
                             }
                         },
-                        shape = RoundedCornerShape(8.dp),
+                        icon = Icons.Default.CleaningServices,
+                        isSecondary = true,
                         modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CleaningServices,
-                            contentDescription = null,
-                            tint = CyanPrimary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Trim Cache", color = TextPrimary)
-                    }
+                    )
                 }
             }
         }
 
         if (actionNotification != null) {
-            Card(
-                shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.cardColors(containerColor = SlateSurfaceHighlight),
-                modifier = Modifier.fillMaxWidth()
+            RinovaSurfaceCard(
+                modifier = Modifier.fillMaxWidth(),
+                shapeRadius = 14.dp
             ) {
                 Text(
                     text = actionNotification ?: "",
-                    color = TextPrimary,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(12.dp)
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(14.dp)
                 )
             }
         }
@@ -292,7 +261,7 @@ fun StorageScreen(
                 title = "Cache Aplikasi",
                 sizeText = FileSizeFormatter.format(storageState.appCacheBytes),
                 hint = "Data sementara sistem",
-                color = CyanPrimary,
+                color = Primary,
                 modifier = Modifier.weight(1f)
             )
             StorageStatCard(
@@ -314,66 +283,72 @@ fun StorageScreen(
         // Orphaned Directories Section
         Text(
             text = "Daftar Folder Yatim Terdeteksi (${storageState.orphanedDirectories.size})",
-            color = TextPrimary,
-            fontSize = 15.sp,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold
         )
 
         if (storageState.isAnalyzing) {
             repeat(2) { SkeletonListItem() }
         } else if (storageState.orphanedDirectories.isEmpty()) {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                modifier = Modifier.fillMaxWidth()
+            RinovaSurfaceCard(
+                modifier = Modifier.fillMaxWidth(),
+                shapeRadius = 16.dp
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(18.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.FolderOff,
-                        contentDescription = null,
-                        tint = StatusSafe,
-                        modifier = Modifier.size(28.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(StatusSafe.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FolderOff,
+                            contentDescription = null,
+                            tint = StatusSafe,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                     Text(
                         text = "Tidak ditemukan folder sisa OBB atau data aplikasi yang terhapus di /sdcard/Android.",
-                        color = TextSecondary,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 18.sp
                     )
                 }
             }
         } else {
             storageState.orphanedDirectories.forEach { folder ->
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                    modifier = Modifier.fillMaxWidth()
+                RinovaSurfaceCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shapeRadius = 16.dp
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(14.dp),
+                            .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = folder.folderName,
-                                color = TextPrimary,
-                                fontSize = 14.sp,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Bold
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = folder.path,
-                                color = TextSecondary,
-                                fontSize = 11.sp,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = FontFamily.Monospace,
                                 maxLines = 1
                             )
@@ -381,24 +356,17 @@ fun StorageScreen(
                             Text(
                                 text = "Ukuran: ${FileSizeFormatter.format(folder.sizeBytes)} • ${folder.reason}",
                                 color = StatusWarning,
-                                fontSize = 12.sp
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium
                             )
                         }
 
-                        Button(
+                        RinovaTactileButton(
+                            text = "Hapus",
                             onClick = { folderToDelete = folder },
-                            colors = ButtonDefaults.buttonColors(containerColor = StatusCritical),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.DeleteOutline,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Hapus", color = Color.White, fontSize = 12.sp)
-                        }
+                            icon = Icons.Default.DeleteOutline,
+                            height = 36.dp
+                        )
                     }
                 }
             }
@@ -414,10 +382,9 @@ private fun StorageStatCard(
     color: Color,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = SlateSurface),
-        modifier = modifier
+    RinovaSurfaceCard(
+        modifier = modifier,
+        shapeRadius = 14.dp
     ) {
         Column(
             modifier = Modifier
@@ -425,11 +392,22 @@ private fun StorageStatCard(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(text = title, color = TextSecondary, fontSize = 11.sp)
-            Text(text = sizeText, color = color, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            Text(text = hint, color = TextTertiary(color), fontSize = 10.sp)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = sizeText,
+                style = MaterialTheme.typography.titleMedium,
+                color = color,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = hint,
+                style = MaterialTheme.typography.labelSmall,
+                color = color.copy(alpha = 0.7f)
+            )
         }
     }
 }
-
-private fun TextTertiary(color: Color): Color = color.copy(alpha = 0.7f)

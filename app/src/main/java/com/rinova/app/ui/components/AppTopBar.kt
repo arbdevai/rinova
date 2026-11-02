@@ -2,6 +2,7 @@ package com.rinova.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,28 +28,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rinova.app.core.model.AdbConnectionState
 import com.rinova.app.ui.theme.OutlineVariant
 import com.rinova.app.ui.theme.Primary
+import com.rinova.app.ui.theme.PrimaryContainer
 import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
-import com.rinova.app.ui.theme.SurfaceContainerHigh
-import com.rinova.app.ui.theme.SurfaceContainerLow
 
 @Composable
 fun AppTopBar(
     connectionState: AdbConnectionState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onStatusClick: (() -> Unit)? = null
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.background,
+        color = Color(0xFF101216),
         modifier = modifier
             .fillMaxWidth()
-            .border(width = 1.dp, color = OutlineVariant)
+            .statusBarsPadding() // CRITICAL: Mencegah TopAppBar tertutup status bar jam & baterai fisik ponsel
+            .border(width = 0.8.dp, color = OutlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -56,7 +60,7 @@ fun AppTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Brand & App Identity
+            // Brand & Identity
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -65,13 +69,13 @@ fun AppTopBar(
                     modifier = Modifier
                         .size(34.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(PrimaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Build,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = Primary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -84,18 +88,19 @@ fun AppTopBar(
                         Text(
                             text = "Rinova",
                             style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onBackground
+                            color = Color(0xFFF3F4F6),
+                            fontWeight = FontWeight.Bold
                         )
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                                .background(Primary.copy(alpha = 0.15f))
                                 .padding(horizontal = 5.dp, vertical = 2.dp)
                         ) {
                             Text(
                                 text = "PRO",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = Primary,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -103,40 +108,39 @@ fun AppTopBar(
                     Text(
                         text = "Diagnostik & Pemulihan Ponsel",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color(0xFF9CA3AF)
                     )
                 }
             }
 
-            // Connection Telemetry Badge (Google Tonal Chip)
-            val (badgeText, badgeColor, badgeIcon) = when (connectionState) {
-                is AdbConnectionState.Connected -> Triple(
+            // Connection Telemetry Badge (Interactive Pill)
+            val (badgeText, badgeColor) = when (connectionState) {
+                is AdbConnectionState.Connected -> Pair(
                     "${connectionState.device.brand} ${connectionState.device.model}",
-                    StatusSafe,
-                    Icons.Default.CheckCircle
+                    StatusSafe
                 )
-                is AdbConnectionState.Connecting, is AdbConnectionState.Authorizing -> Triple(
+                is AdbConnectionState.Connecting, is AdbConnectionState.Authorizing -> Pair(
                     "Otorisasi...",
-                    StatusWarning,
-                    Icons.Default.Sync
+                    StatusWarning
                 )
-                is AdbConnectionState.Error -> Triple(
+                is AdbConnectionState.Error -> Pair(
                     "Koneksi Gagal",
-                    StatusCritical,
-                    Icons.Default.CloudOff
+                    StatusCritical
                 )
-                is AdbConnectionState.Disconnected -> Triple(
-                    "Belum Terhubung",
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-                    Icons.Default.CloudOff
+                is AdbConnectionState.Disconnected -> Pair(
+                    "Siap Konek",
+                    Color(0xFF9CA3AF)
                 )
             }
 
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(SurfaceContainerHigh)
+                    .background(Color(0xFF1A1D24))
                     .border(0.8.dp, OutlineVariant, RoundedCornerShape(20.dp))
+                    .then(
+                        if (onStatusClick != null) Modifier.clickable(onClick = onStatusClick) else Modifier
+                    )
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Row(
@@ -152,7 +156,7 @@ fun AppTopBar(
                     Text(
                         text = badgeText,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = Color(0xFFF3F4F6),
                         fontWeight = FontWeight.Medium,
                         maxLines = 1
                     )

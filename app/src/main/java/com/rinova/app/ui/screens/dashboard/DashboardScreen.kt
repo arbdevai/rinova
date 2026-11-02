@@ -2,7 +2,6 @@ package com.rinova.app.ui.screens.dashboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,23 +25,13 @@ import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -62,7 +50,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rinova.app.BuildConfig
 import com.rinova.app.core.model.AdbConnectionState
-import com.rinova.app.core.model.DeviceInfo
 import com.rinova.app.core.update.UpdateManager
 import com.rinova.app.core.update.UpdateState
 import com.rinova.app.core.util.FileSizeFormatter
@@ -70,16 +57,13 @@ import com.rinova.app.data.repository.AdbRepository
 import com.rinova.app.data.repository.StorageRepository
 import com.rinova.app.ui.components.AlertType
 import com.rinova.app.ui.components.CustomActionDialog
-import com.rinova.app.ui.theme.Outline
-import com.rinova.app.ui.theme.OutlineVariant
+import com.rinova.app.ui.components.RinovaBentoStat
+import com.rinova.app.ui.components.RinovaSurfaceCard
+import com.rinova.app.ui.components.RinovaTactileButton
 import com.rinova.app.ui.theme.Primary
 import com.rinova.app.ui.theme.PrimaryContainer
 import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
-import com.rinova.app.ui.theme.StatusWarning
-import com.rinova.app.ui.theme.SurfaceContainer
-import com.rinova.app.ui.theme.SurfaceContainerHigh
-import com.rinova.app.ui.theme.SurfaceContainerLow
 import kotlinx.coroutines.launch
 
 @Composable
@@ -126,35 +110,34 @@ fun DashboardScreen(
                 .padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-                border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
-                modifier = Modifier.fillMaxWidth()
+            RinovaSurfaceCard(
+                modifier = Modifier.fillMaxWidth(),
+                shapeRadius = 20.dp
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(60.dp)
+                            .size(64.dp)
                             .clip(CircleShape)
-                            .background(SurfaceContainerHigh),
+                            .background(PrimaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.PhoneAndroid,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = Primary,
                             modifier = Modifier.size(32.dp)
                         )
                     }
                     Text(
                         text = "Perangkat Belum Terhubung",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "Buka tab 'Sambungan' untuk menghubungkan ponsel target melalui ADB Wireless (Kode 6-Digit atau QR Code).",
@@ -178,12 +161,10 @@ fun DashboardScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // HERO CARD: DEVICE IDENTITY (Google Material 3 Standard)
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
-            modifier = Modifier.fillMaxWidth()
+        // HERO CARD: DEVICE IDENTITY (Industrial Bento Header)
+        RinovaSurfaceCard(
+            modifier = Modifier.fillMaxWidth(),
+            shapeRadius = 20.dp
         ) {
             Column(
                 modifier = Modifier
@@ -204,7 +185,7 @@ fun DashboardScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(44.dp)
+                                .size(46.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(PrimaryContainer),
                             contentAlignment = Alignment.Center
@@ -212,7 +193,7 @@ fun DashboardScreen(
                             Icon(
                                 imageVector = Icons.Default.PhoneAndroid,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                tint = Primary,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -221,6 +202,7 @@ fun DashboardScreen(
                                 text = "${device.brand} ${device.model}",
                                 style = MaterialTheme.typography.titleLarge,
                                 color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold,
                                 maxLines = 1
                             )
                             Text(
@@ -237,15 +219,15 @@ fun DashboardScreen(
                             .clip(RoundedCornerShape(20.dp))
                             .background(StatusSafe.copy(alpha = 0.15f))
                             .border(0.8.dp, StatusSafe.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(6.dp)
+                                    .size(7.dp)
                                     .clip(CircleShape)
                                     .background(StatusSafe)
                             )
@@ -253,7 +235,8 @@ fun DashboardScreen(
                                 text = "ONLINE",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = StatusSafe,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp
                             )
                         }
                     }
@@ -264,14 +247,14 @@ fun DashboardScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    BentoTile(
+                    RinovaBentoStat(
                         icon = Icons.Default.Speed,
                         label = "Sistem Operasi",
                         primaryValue = "Android ${device.androidVersion}",
                         subValue = "SDK ${device.sdkInt} • Patch ${device.securityPatch}",
                         modifier = Modifier.weight(1f)
                     )
-                    BentoTile(
+                    RinovaBentoStat(
                         icon = Icons.Default.Build,
                         label = "Custom ROM",
                         primaryValue = device.customRomBrand,
@@ -286,7 +269,7 @@ fun DashboardScreen(
                 ) {
                     val batText = if (device.batteryLevel >= 0) "${device.batteryLevel}%" else "N/A"
                     val batStatus = if (device.isCharging) "Mengisi Daya" else "Baterai Normal"
-                    BentoTile(
+                    RinovaBentoStat(
                         icon = Icons.Default.BatteryChargingFull,
                         label = "Baterai",
                         primaryValue = batText,
@@ -296,7 +279,7 @@ fun DashboardScreen(
 
                     val ramPrimary = if (device.totalRamMb > 0) "${device.freeRamMb} MB" else "N/A"
                     val ramSub = if (device.totalRamMb > 0) "Bebas dari ${device.totalRamMb} MB" else "RAM Telemetri"
-                    BentoTile(
+                    RinovaBentoStat(
                         icon = Icons.Default.Memory,
                         label = "Memori RAM",
                         primaryValue = ramPrimary,
@@ -307,27 +290,27 @@ fun DashboardScreen(
             }
         }
 
-        // QUICK TECHNICIAN CONTROLS (Grouped Clean Architecture)
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
-            modifier = Modifier.fillMaxWidth()
+        // QUICK TECHNICIAN CONTROLS (Bespoke Tactile Actions)
+        RinovaSurfaceCard(
+            modifier = Modifier.fillMaxWidth(),
+            shapeRadius = 18.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = "Aksi Cepat Teknisi",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
                 )
 
                 // Primary Quick Action: Trim System Caches
-                Button(
+                RinovaTactileButton(
+                    text = "Trim Cache Sistem Instan",
                     onClick = {
                         dialogTitle = "Paksa Bersihkan Cache Sistem"
                         dialogMessage = "Jalankan 'pm trim-caches' untuk menghapus seluruh file cache sementara tanpa menghapus data login penting pengguna?"
@@ -343,32 +326,17 @@ fun DashboardScreen(
                             }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CleaningServices,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Trim Cache Sistem Instan",
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
+                    icon = Icons.Default.CleaningServices,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 // Secondary Actions Row: Reboot Target / Safe Mode
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    FilledTonalButton(
+                    RinovaTactileButton(
+                        text = "Reboot",
                         onClick = {
                             dialogTitle = "Reboot Target"
                             dialogMessage = "Mulai ulang HP target ke sistem normal?"
@@ -381,16 +349,14 @@ fun DashboardScreen(
                                 }
                             }
                         },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = SurfaceContainerHigh),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(imageVector = Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Reboot", style = MaterialTheme.typography.labelMedium)
-                    }
+                        icon = Icons.Default.RestartAlt,
+                        isSecondary = true,
+                        modifier = Modifier.weight(1f),
+                        height = 44.dp
+                    )
 
-                    FilledTonalButton(
+                    RinovaTactileButton(
+                        text = "Safe Mode",
                         onClick = {
                             dialogTitle = "Reboot ke Safe Mode"
                             dialogMessage = "Masuk ke Safe Mode target? Seluruh aplikasi pihak ketiga dan malware akan dinonaktifkan sementara."
@@ -404,30 +370,25 @@ fun DashboardScreen(
                                 }
                             }
                         },
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = SurfaceContainerHigh),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(imageVector = Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Safe Mode", style = MaterialTheme.typography.labelMedium)
-                    }
+                        icon = Icons.Default.Shield,
+                        isSecondary = true,
+                        modifier = Modifier.weight(1f),
+                        height = 44.dp
+                    )
                 }
             }
         }
 
         // IN-APP UPDATE CARD (Pixel System Update Style)
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
-            modifier = Modifier.fillMaxWidth()
+        RinovaSurfaceCard(
+            modifier = Modifier.fillMaxWidth(),
+            shapeRadius = 18.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -441,9 +402,9 @@ fun DashboardScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(SurfaceContainerHigh),
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(PrimaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -457,7 +418,8 @@ fun DashboardScreen(
                             Text(
                                 text = "Pembaruan Rinova",
                                 style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = "Versi Saat Ini: v${BuildConfig.VERSION_NAME}",
@@ -469,22 +431,23 @@ fun DashboardScreen(
 
                     when (val state = updateState) {
                         is UpdateState.Idle, is UpdateState.Error -> {
-                            OutlinedButton(
+                            RinovaTactileButton(
+                                text = "Cek Update",
                                 onClick = {
                                     coroutineScope.launch {
                                         updateManager.checkForUpdates()
                                     }
                                 },
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Cek Update", style = MaterialTheme.typography.labelSmall)
-                            }
+                                isSecondary = true,
+                                height = 36.dp
+                            )
                         }
                         is UpdateState.Checking -> {
                             Text("Memeriksa...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         is UpdateState.UpdateAvailable -> {
-                            Button(
+                            RinovaTactileButton(
+                                text = "Unduh ${state.newVersion}",
                                 onClick = {
                                     coroutineScope.launch {
                                         updateManager.downloadUpdate(
@@ -494,24 +457,19 @@ fun DashboardScreen(
                                         )
                                     }
                                 },
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Unduh ${state.newVersion}", style = MaterialTheme.typography.labelSmall)
-                            }
+                                icon = Icons.Default.Download,
+                                height = 36.dp
+                            )
                         }
                         is UpdateState.Downloading -> {
-                            Text("${state.progressPercent}%", style = MaterialTheme.typography.labelSmall, color = Primary)
+                            Text("${state.progressPercent}%", style = MaterialTheme.typography.labelSmall, color = Primary, fontWeight = FontWeight.Bold)
                         }
                         is UpdateState.ReadyToInstall -> {
-                            Button(
+                            RinovaTactileButton(
+                                text = "Pasang Update",
                                 onClick = { updateManager.installApk(state.apkFile) },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = StatusSafe)
-                            ) {
-                                Text("Pasang Update", color = Color.Black, style = MaterialTheme.typography.labelSmall)
-                            }
+                                height = 36.dp
+                            )
                         }
                     }
                 }
@@ -525,7 +483,7 @@ fun DashboardScreen(
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(3.dp)),
                             color = Primary,
-                            trackColor = SurfaceContainerHigh
+                            trackColor = Color(0xFF282D38)
                         )
                     }
                     is UpdateState.UpdateAvailable -> {
@@ -548,10 +506,9 @@ fun DashboardScreen(
         }
 
         if (actionFeedback != null) {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfaceContainerHigh),
-                modifier = Modifier.fillMaxWidth()
+            RinovaSurfaceCard(
+                modifier = Modifier.fillMaxWidth(),
+                shapeRadius = 14.dp
             ) {
                 Text(
                     text = actionFeedback ?: "",
@@ -566,7 +523,8 @@ fun DashboardScreen(
         Text(
             text = "Modul Diagnostik",
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold
         )
 
         FeatureRowCard(
@@ -600,68 +558,16 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun BentoTile(
-    icon: ImageVector,
-    label: String,
-    primaryValue: String,
-    subValue: String,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceContainerHigh),
-        border = androidx.compose.foundation.BorderStroke(0.8.dp, OutlineVariant),
-        modifier = modifier
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Primary,
-                    modifier = Modifier.size(14.dp)
-                )
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Text(
-                text = primaryValue,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1
-            )
-            Text(
-                text = subValue,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1
-            )
-        }
-    }
-}
-
-@Composable
 private fun FeatureRowCard(
     title: String,
     subtitle: String,
     icon: ImageVector,
     onClick: () -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
-        border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
-        modifier = Modifier.fillMaxWidth()
+    RinovaSurfaceCard(
+        modifier = Modifier.fillMaxWidth(),
+        shapeRadius = 16.dp,
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier
@@ -673,14 +579,14 @@ private fun FeatureRowCard(
             Box(
                 modifier = Modifier
                     .size(42.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .background(PrimaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    tint = Primary,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -688,7 +594,8 @@ private fun FeatureRowCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(

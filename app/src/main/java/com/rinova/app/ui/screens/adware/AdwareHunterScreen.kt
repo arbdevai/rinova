@@ -20,14 +20,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,19 +45,14 @@ import com.rinova.app.core.model.ThreatSeverity
 import com.rinova.app.data.repository.AdwareHunterRepository
 import com.rinova.app.ui.components.AlertType
 import com.rinova.app.ui.components.CustomActionDialog
+import com.rinova.app.ui.components.RinovaSurfaceCard
+import com.rinova.app.ui.components.RinovaTactileButton
 import com.rinova.app.ui.components.ScanningProgressSheet
 import com.rinova.app.ui.components.SkeletonListItem
-import com.rinova.app.ui.theme.CyanOnPrimary
-import com.rinova.app.ui.theme.CyanPrimary
-import com.rinova.app.ui.theme.SlateBackground
-import com.rinova.app.ui.theme.SlateSurface
-import com.rinova.app.ui.theme.SlateSurfaceHighlight
-import com.rinova.app.ui.theme.SlateSurfaceVariant
+import com.rinova.app.ui.theme.Primary
 import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
-import com.rinova.app.ui.theme.TextPrimary
-import com.rinova.app.ui.theme.TextSecondary
 import kotlinx.coroutines.launch
 
 @Composable
@@ -119,7 +110,7 @@ fun AdwareHunterScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(SlateBackground)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -134,16 +125,15 @@ fun AdwareHunterScreen(
         }
 
         // Active Ad Sniffer Banner
-        Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SlateSurface),
-            modifier = Modifier.fillMaxWidth()
+        RinovaSurfaceCard(
+            modifier = Modifier.fillMaxWidth(),
+            shapeRadius = 18.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -153,21 +143,21 @@ fun AdwareHunterScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Sniffer Jendela Aktif (Active Ad Sniffer)",
-                            color = TextPrimary,
-                            fontSize = 15.sp,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Saat iklan pop-up tiba-tiba muncul di HP pasien, tekan tombol ini detik itu juga untuk menangkap pelakunya.",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 16.sp
                         )
                     }
                     Box(
                         modifier = Modifier
-                            .size(42.dp)
+                            .size(44.dp)
                             .clip(CircleShape)
                             .background(StatusCritical.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
@@ -176,12 +166,13 @@ fun AdwareHunterScreen(
                             imageVector = Icons.Default.CenterFocusStrong,
                             contentDescription = null,
                             tint = StatusCritical,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
 
-                Button(
+                RinovaTactileButton(
+                    text = "Tangkap Pelaku Iklan Sekarang",
                     onClick = {
                         coroutineScope.launch {
                             val res = adwareHunterRepository.captureTopActiveWindow()
@@ -196,68 +187,51 @@ fun AdwareHunterScreen(
                             )
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = StatusCritical),
-                    shape = RoundedCornerShape(8.dp),
+                    icon = Icons.Default.CenterFocusStrong,
                     modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CenterFocusStrong,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Tangkap Pelaku Iklan Sekarang",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                )
 
                 if (capturedWindowPkg != null) {
-                    Card(
-                        shape = RoundedCornerShape(10.dp),
-                        colors = CardDefaults.cardColors(containerColor = SlateSurfaceHighlight),
-                        modifier = Modifier.fillMaxWidth()
+                    RinovaSurfaceCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shapeRadius = 14.dp
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Text(
                                 text = "Pelaku Layar Teratas Terdeteksi:",
                                 color = StatusWarning,
-                                fontSize = 12.sp,
+                                style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = capturedWindowPkg ?: "",
-                                color = CyanPrimary,
+                                color = Primary,
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 13.sp,
+                                style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                OutlinedButton(
+                                RinovaTactileButton(
+                                    text = "Bekukan",
                                     onClick = { selectedActionTarget = Pair(capturedWindowPkg!!, false) },
-                                    shape = RoundedCornerShape(6.dp),
+                                    isSecondary = true,
+                                    height = 38.dp,
                                     modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("Bekukan", color = StatusWarning, fontSize = 12.sp)
-                                }
-                                Button(
+                                )
+                                RinovaTactileButton(
+                                    text = "Copot Paksa",
                                     onClick = { selectedActionTarget = Pair(capturedWindowPkg!!, true) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = StatusCritical),
-                                    shape = RoundedCornerShape(6.dp),
+                                    height = 38.dp,
                                     modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("Copot Paksa", color = Color.White, fontSize = 12.sp)
-                                }
+                                )
                             }
                         }
                     }
@@ -266,16 +240,15 @@ fun AdwareHunterScreen(
         }
 
         if (actionNotification != null) {
-            Card(
-                shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.cardColors(containerColor = SlateSurfaceHighlight),
-                modifier = Modifier.fillMaxWidth()
+            RinovaSurfaceCard(
+                modifier = Modifier.fillMaxWidth(),
+                shapeRadius = 14.dp
             ) {
                 Text(
                     text = actionNotification ?: "",
-                    color = TextPrimary,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(12.dp)
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(14.dp)
                 )
             }
         }
@@ -288,55 +261,56 @@ fun AdwareHunterScreen(
         ) {
             Text(
                 text = "Audit Aplikasi Berisiko & Overlay",
-                color = TextPrimary,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold
             )
-            Button(
+            RinovaTactileButton(
+                text = if (isScanning) "Memindai..." else "Pindai Semua",
                 onClick = {
                     coroutineScope.launch {
                         adwareHunterRepository.scanSuspiciousApps()
                     }
                 },
+                icon = Icons.Default.Refresh,
                 enabled = !isScanning,
-                colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    text = if (isScanning) "Memindai..." else "Pindai Semua",
-                    color = CyanOnPrimary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                height = 36.dp
+            )
         }
 
         // Threat List
         if (isScanning) {
             repeat(3) { SkeletonListItem() }
         } else if (threats.isEmpty()) {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = SlateSurface),
-                modifier = Modifier.fillMaxWidth()
+            RinovaSurfaceCard(
+                modifier = Modifier.fillMaxWidth(),
+                shapeRadius = 16.dp
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(18.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Security,
-                        contentDescription = null,
-                        tint = StatusSafe,
-                        modifier = Modifier.size(28.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(StatusSafe.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Security,
+                            contentDescription = null,
+                            tint = StatusSafe,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                     Text(
                         text = "Belum ada aplikasi mencurigakan atau overlay nakal yang terdeteksi. Jalankan 'Pindai Semua' untuk audit menyeluruh.",
-                        color = TextSecondary,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 18.sp
                     )
                 }
@@ -367,16 +341,15 @@ private fun ThreatItemCard(
         ThreatSeverity.SAFE -> StatusSafe
     }
 
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = SlateSurface),
-        modifier = Modifier.fillMaxWidth()
+    RinovaSurfaceCard(
+        modifier = Modifier.fillMaxWidth(),
+        shapeRadius = 16.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -386,28 +359,28 @@ private fun ThreatItemCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = item.appName.ifEmpty { item.packageName.substringAfterLast(".") },
-                        color = TextPrimary,
-                        fontSize = 15.sp,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = item.packageName,
-                        color = TextSecondary,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontFamily = FontFamily.Monospace,
                         maxLines = 1
                     )
                 }
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
+                        .clip(RoundedCornerShape(8.dp))
                         .background(severityColor.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = item.severity.name,
                         color = severityColor,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -418,7 +391,7 @@ private fun ThreatItemCard(
                 Text(
                     text = "Bukti Sistem: ${item.evidenceReason}",
                     color = StatusWarning,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     lineHeight = 16.sp
                 )
             }
@@ -427,34 +400,20 @@ private fun ThreatItemCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
-                OutlinedButton(
+                RinovaTactileButton(
+                    text = "Bekukan",
                     onClick = onFreeze,
-                    shape = RoundedCornerShape(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Block,
-                        contentDescription = null,
-                        tint = StatusWarning,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Bekukan", color = StatusWarning, fontSize = 12.sp)
-                }
+                    icon = Icons.Default.Block,
+                    isSecondary = true,
+                    height = 36.dp
+                )
                 Spacer(modifier = Modifier.width(8.dp))
-                Button(
+                RinovaTactileButton(
+                    text = "Copot",
                     onClick = onUninstall,
-                    colors = ButtonDefaults.buttonColors(containerColor = StatusCritical),
-                    shape = RoundedCornerShape(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Copot", color = Color.White, fontSize = 12.sp)
-                }
+                    icon = Icons.Default.Delete,
+                    height = 36.dp
+                )
             }
         }
     }
