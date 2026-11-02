@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -35,10 +34,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,9 +51,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rinova.app.BuildConfig
 import com.rinova.app.core.di.RinovaContainer
 import com.rinova.app.core.model.AdbConnectionState
+import com.rinova.app.core.update.UpdateState
+import com.rinova.app.ui.components.AlertType
 import com.rinova.app.ui.components.AppTopBar
+import com.rinova.app.ui.components.CustomActionDialog
+import com.rinova.app.ui.components.RinovaLogViewerSheet
+import com.rinova.app.ui.components.RinovaUpdateDialog
 import com.rinova.app.ui.screens.adware.AdwareHunterScreen
 import com.rinova.app.ui.screens.ai.AiDiagnosticScreen
 import com.rinova.app.ui.screens.connect.ConnectScreen
@@ -62,6 +69,7 @@ import com.rinova.app.ui.screens.storage.StorageScreen
 import com.rinova.app.ui.theme.OutlineVariant
 import com.rinova.app.ui.theme.Primary
 import com.rinova.app.ui.theme.PrimaryContainer
+import kotlinx.coroutines.launch
 
 // 4 TAB KERJA UTAMA TEKNISI (Ergonomis, Bebas Sempit, Standar M3)
 enum class RinovaWorkspaceTab(val label: String, val icon: ImageVector) {
@@ -79,18 +87,75 @@ fun RinovaMainScreen(
     var currentTab by remember { mutableStateOf(RinovaWorkspaceTab.IKHTISAR) }
     var optimasiSubTab by remember { mutableIntStateOf(0) } // 0 = Debloat, 1 = Gemini AI
     var showDisconnectConfirm by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var showLogSheet by remember { mutableStateOf(false) }
 
+    val coroutineScope = rememberCoroutineScope()
     val connectionState by container.adbRepository.connectionState.collectAsStateWithLifecycle()
+    val updateState by container.updateManager.updateState.collectAsStateWithLifecycle()
     val isConnected = connectionState is AdbConnectionState.Connected
+
+    // Auto-check In-App Update saat aplikasi dibuka sesuai standar industri skill Android Compose
+    LaunchedEffect(Unit) {
+        container.updateManager.checkForUpdates()
+    }
+
+    // Munculkan dialog otomatis jika terdeteksi versi baru
+    LaunchedEffect(updateState) {
+        if (updateState is UpdateState.UpdateAvailable) {
+            showUpdateDialog = true
+        }
+    }
 
     BackHandler(enabled = isConnected && currentTab != RinovaWorkspaceTab.IKHTISAR) {
         currentTab = RinovaWorkspaceTab.IKHTISAR
+    }
+
+    // Modal In-App Update
+    if (showUpdateDialog || updateState is UpdateState.Downloading || updateState is UpdateState.ReadyToInstall) {
+        RinovaUpdateDialog(
+            updateState = updateState,
+            currentVersion = BuildConfig.VERSION_NAME,
+            onDownload = { url, version, size ->
+                coroutineScope.launch {
+                    container.updateManager.downloadUpdate(url, version, size)
+                }
+            },
+            onInstall = { apkFile ->
+                container.updateManager.installApk(apkFile)
+            },
+            onCheckAgain = {
+                coroutineScope.launch {
+                    container.updateManager.checkForUpdates()
+                }
+            },
+            onDismiss = {
+                showUpdateDialog = false
+                container.updateManager.dismiss()
+            }
+        )
+    }
+
+    // Modal Konsol Log Telemetri
+    if (showLogSheet) {
+        RinovaLogViewerSheet(
+            onDismiss = { showLogSheet = false }
+        )
     }
 
     Scaffold(
         topBar = {
             AppTopBar(
                 connectionState = connectionState,
+                updateState = updateState,
+                onUpdateClick = { showUpdateDialog = true },
+                onCheckUpdateManual = {
+                    coroutineScope.launch {
+                        container.updateManager.checkForUpdates()
+                        showUpdateDialog = true
+                    }
+                },
+                onLogClick = { showLogSheet = true },
                 onStatusClick = {
                     if (isConnected) {
                         showDisconnectConfirm = true
@@ -130,7 +195,8 @@ fun RinovaMainScreen(
                     adbRepository = container.adbRepository,
                     settingsRepository = container.settingsRepository,
                     connectionState = connectionState,
-                    onConnectSuccess = { currentTab = RinovaWorkspaceTab.IKHTISAR }
+                    onConnectSuccess = { currentTab = RinovaWorkspaceTab.IKHTISAR },
+                    onOpenLog = { showLogSheet = true }
                 )
             } else {
                 // WORKSPACE TEKNISI (4 Core Tabs)
@@ -203,7 +269,7 @@ fun RinovaMainScreen(
                                                     .weight(1f)
                                                     .clip(RoundedCornerShape(9.dp))
                                                     .background(if (isSel) PrimaryContainer else Color.Transparent)
-                                                    .clickable { optimasiSubTab = idx }
+                                                .clickable { optimasiSubTab = idx }
                                                     .padding(vertical = 9.dp),
                                                 contentAlignment = Alignment.Center
                                             ) {
@@ -246,6 +312,22 @@ fun RinovaMainScreen(
                 }
             }
         }
+    }
+
+    if (showDisconnectConfirm) {
+        CustomActionDialog(
+            title = "Putuskan Sambungan ADB",
+            message = "Apakah Anda ingin memutuskan sesi sambungan wireless ADB dengan ponsel pasien saat ini?",
+            alertType = AlertType.WARNING,
+            confirmButtonText = "Putuskan Sesi",
+            onConfirm = {
+                showDisconnectConfirm = false
+                coroutineScope.launch {
+                    container.adbRepository.disconnect()
+                }
+            },
+            onDismiss = { showDisconnectConfirm = false }
+        )
     }
 }
 

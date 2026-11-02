@@ -48,10 +48,19 @@ sealed interface UpdateState {
         val fileSizeBytes: Long
     ) : UpdateState
     data class Downloading(val progressPercent: Int) : UpdateState
-    data class ReadyToInstall(val apkFile: File) : UpdateState
+    data class ReadyToInstall(val apkFile: File, val version: String) : UpdateState
     data class Error(val message: String) : UpdateState
 }
 
+/**
+ * UpdateManager sesuai standar industri skill Android Compose:
+ * - Direct OkHttp Streaming dengan Buffer 64KB & timeout tangguh
+ * - Isolasi file sementara (.part) anti file korup
+ * - Verifikasi wajib 4 lapis (isApkValid: ukuran >10MB, DEX & archive parsing, strict packageName, versionCode progression)
+ * - Penanganan izin REQUEST_INSTALL_PACKAGES ke settings sistem
+ * - Pembersihan otomatis APK usang
+ * - Komparasi SemVer numerik hierarkis
+ */
 class UpdateManager(
     private val context: Context,
     private val repoOwner: String = "arbdevai",
@@ -72,6 +81,12 @@ class UpdateManager(
 
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
+
+    fun dismiss() {
+        if (_updateState.value !is UpdateState.Downloading) {
+            _updateState.value = UpdateState.Idle
+        }
+    }
 
     suspend fun checkForUpdates(): Result<UpdateState> = withContext(Dispatchers.IO) {
         _updateState.value = UpdateState.Checking
@@ -100,6 +115,14 @@ class UpdateManager(
                     ?: release.assets.firstOrNull()
 
                 if (apkAsset != null) {
+                    val downloadDir = context.getExternalFilesDir("updates") ?: context.filesDir
+                    val cachedApk = File(downloadDir, "app-${release.tag_name}.apk")
+                    if (cachedApk.exists() && isApkValid(context, cachedApk, apkAsset.size)) {
+                        val readyState = UpdateState.ReadyToInstall(cachedApk, release.tag_name)
+                        _updateState.value = readyState
+                        return@withContext Result.success(readyState)
+                    }
+
                     val state = UpdateState.UpdateAvailable(
                         newVersion = release.tag_name,
                         releaseNotes = release.body,
@@ -178,7 +201,8 @@ class UpdateManager(
                 if (finalApkFile.exists()) finalApkFile.delete()
                 val renamed = tempPartFile.renameTo(finalApkFile)
                 if (renamed) {
-                    _updateState.value = UpdateState.ReadyToInstall(finalApkFile)
+                    val ready = UpdateState.ReadyToInstall(finalApkFile, version)
+                    _updateState.value = ready
                     Result.success(finalApkFile)
                 } else {
                     tempPartFile.delete()
@@ -201,7 +225,7 @@ class UpdateManager(
     }
 
     fun installApk(apkFile: File) {
-        if (!apkFile.exists() || apkFile.length() < 1_000_000) return
+        if (!apkFile.exists() || apkFile.length() < 10_000_000) return
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
             val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
@@ -222,7 +246,7 @@ class UpdateManager(
     }
 
     private fun isApkValid(context: Context, apkFile: File, expectedBytes: Long = 0L): Boolean {
-        if (!apkFile.exists() || !apkFile.isFile || apkFile.length() < 1_000_000) return false
+        if (!apkFile.exists() || !apkFile.isFile || apkFile.length() < 10_000_000) return false
         if (expectedBytes > 0L && Math.abs(apkFile.length() - expectedBytes) > 4096L) return false
 
         return try {
@@ -233,7 +257,9 @@ class UpdateManager(
                 PackageManager.GET_SIGNATURES or PackageManager.GET_ACTIVITIES
             }
             val pkg = context.packageManager.getPackageArchiveInfo(apkFile.absolutePath, flags) ?: return false
-            pkg.packageName == context.packageName
+            if (pkg.packageName != context.packageName) return false
+            val remoteVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) pkg.longVersionCode else @Suppress("DEPRECATION") pkg.versionCode.toLong()
+            remoteVersionCode > BuildConfig.VERSION_CODE
         } catch (_: Exception) {
             false
         }

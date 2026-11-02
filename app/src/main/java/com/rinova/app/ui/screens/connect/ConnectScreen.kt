@@ -78,6 +78,7 @@ fun ConnectScreen(
     settingsRepository: SettingsRepository,
     connectionState: AdbConnectionState,
     onConnectSuccess: () -> Unit,
+    onOpenLog: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     // Tab Mode: 0 = Langsung, 1 = Kode 6-Digit, 2 = QR Code
@@ -477,11 +478,22 @@ fun ConnectScreen(
                 }
 
                 if (errorMessage != null) {
-                    Text(
-                        text = errorMessage ?: "",
-                        color = StatusCritical,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = errorMessage ?: "",
+                            color = StatusCritical,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        if (onOpenLog != null) {
+                            Text(
+                                text = "▶ Buka Konsol Log Telemetri untuk rincian error & stack trace",
+                                color = Primary,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.clickable { onOpenLog() }
+                            )
+                        }
+                    }
                 }
 
                 if (connectionState is AdbConnectionState.Connected) {
