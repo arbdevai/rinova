@@ -153,26 +153,18 @@ fun RinovaMainScreen(
                         onNavigateToAi = { currentTab = RinovaTab.AI }
                     )
                     RinovaTab.STORAGE -> StorageScreen(
-                        storageRepository = container.storageRepository,
-                        adbRepository = container.adbRepository
+                        storageRepository = container.storageRepository
                     )
                     RinovaTab.ADWARE -> AdwareHunterScreen(
-                        adwareRepository = container.adwareRepository,
-                        adbRepository = container.adbRepository
+                        adwareHunterRepository = container.adwareHunterRepository
                     )
                     RinovaTab.DEBLOAT -> DebloatScreen(
                         debloatRepository = container.debloatRepository,
-                        adbRepository = container.adbRepository,
-                        deviceInfo = (connectionState as? AdbConnectionState.Connected)?.device
+                        connectionState = connectionState
                     )
                     RinovaTab.AI -> AiDiagnosticScreen(
-                        geminiApiClient = container.geminiApiClient,
-                        settingsRepository = container.settingsRepository,
-                        adbRepository = container.adbRepository,
-                        storageRepository = container.storageRepository,
-                        adwareRepository = container.adwareRepository,
-                        debloatRepository = container.debloatRepository,
-                        deviceInfo = (connectionState as? AdbConnectionState.Connected)?.device
+                        aiRepository = container.aiDiagnosticRepository,
+                        settingsRepository = container.settingsRepository
                     )
                 }
             }

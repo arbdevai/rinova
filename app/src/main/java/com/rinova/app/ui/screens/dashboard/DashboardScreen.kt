@@ -39,7 +39,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -383,7 +382,7 @@ fun DashboardScreen(
                             }
                         },
                         shape = RoundedCornerShape(10.dp),
-                        colors = FilledTonalButtonDefaults.filledTonalButtonColors(containerColor = SurfaceContainerHigh),
+                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = SurfaceContainerHigh),
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(imageVector = Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -406,7 +405,7 @@ fun DashboardScreen(
                             }
                         },
                         shape = RoundedCornerShape(10.dp),
-                        colors = FilledTonalButtonDefaults.filledTonalButtonColors(containerColor = SurfaceContainerHigh),
+                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = SurfaceContainerHigh),
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(imageVector = Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(16.dp))
