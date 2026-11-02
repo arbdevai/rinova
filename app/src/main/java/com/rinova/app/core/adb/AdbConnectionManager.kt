@@ -241,7 +241,7 @@ class AdbConnectionManager {
             }
         } catch (_: Exception) {}
 
-        val customRom = VendorProfileDetector.detectCustomRom(brand, manufacturer)
+        val customRom = VendorProfileDetector.detect(manufacturer, brand).displayName
 
         return DeviceInfo(
             brand = brand,
@@ -250,7 +250,6 @@ class AdbConnectionManager {
             androidVersion = androidVersion,
             sdkInt = sdkInt,
             cpuAbi = cpuAbi,
-            buildId = buildId,
             securityPatch = securityPatch,
             deviceCodename = deviceCodename,
             customRomBrand = customRom,
