@@ -5,27 +5,35 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <group
-        android:scaleX="0.8"
-        android:scaleY="0.8"
-        android:translateX="10.8"
-        android:translateY="10.8">
-        <!-- WiFi Arc 1 (Crisp White) -->
+        android:scaleX="0.84"
+        android:scaleY="0.84"
+        android:translateX="8.64"
+        android:translateY="8.64">
+        <!-- Security Shield Outline (Electric Cyan) -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#00E5FF"
+            android:strokeWidth="4.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M 54,22 L 78,32 C 78,60 54,82 54,86 C 54,82 30,60 30,32 Z" />
+        <!-- Wireless Debugging Arc 1 (Crisp White) -->
         <path
             android:fillColor="#00000000"
             android:strokeColor="#FFFFFF"
-            android:strokeWidth="5.5"
+            android:strokeWidth="4"
             android:strokeLineCap="round"
-            android:pathData="M 32,46 A 26,26 0 0 1 76,46" />
-        <!-- WiFi Arc 2 (Themed Accent Glow) -->
+            android:pathData="M 38,46 A 20,20 0 0 1 70,46" />
+        <!-- Wireless Debugging Arc 2 (Cyan Glow) -->
         <path
             android:fillColor="#00000000"
             android:strokeColor="#80DEEA"
-            android:strokeWidth="5"
+            android:strokeWidth="3.5"
             android:strokeLineCap="round"
-            android:pathData="M 40,55 A 16,16 0 0 1 68,55" />
-        <!-- Fiber Optic Pulse / Fast Lightning -->
+            android:pathData="M 44,53 A 12,12 0 0 1 64,53" />
+        <!-- Diagnostic Lightning Pulse (Solid White) -->
         <path
             android:fillColor="#FFFFFF"
-            android:pathData="M 57,48 L 47,63 L 53,63 L 49,76 L 62,59 L 56,59 Z" />
+            android:pathData="M 56,48 L 47,63 L 53,63 L 49,76 L 62,59 L 55,59 Z" />
     </group>
 </vector>

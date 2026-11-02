@@ -45,6 +45,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rinova.app.core.update.UpdateManager
+import com.rinova.app.core.update.UpdateState
+import com.rinova.app.core.util.FileSizeFormatter
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material3.LinearProgressIndicator
+import com.rinova.app.BuildConfig
 import com.rinova.app.core.model.AdbConnectionState
 import com.rinova.app.core.model.DeviceInfo
 import com.rinova.app.data.repository.AdbRepository
@@ -69,6 +77,7 @@ fun DashboardScreen(
     connectionState: AdbConnectionState,
     adbRepository: AdbRepository,
     storageRepository: StorageRepository,
+    updateManager: UpdateManager,
     onNavigateToStorage: () -> Unit,
     onNavigateToAdware: () -> Unit,
     onNavigateToDebloat: () -> Unit,
@@ -82,6 +91,7 @@ fun DashboardScreen(
     var onConfirmAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var actionFeedback by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
+    val updateState by updateManager.updateState.collectAsStateWithLifecycle()
 
     if (onConfirmAction != null) {
         CustomActionDialog(
@@ -223,6 +233,142 @@ fun DashboardScreen(
                         value = ramText,
                         modifier = Modifier.weight(1f)
                     )
+                }
+            }
+        }
+
+        // In-App Update Card
+        Card(
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = SlateSurface),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SystemUpdate,
+                            contentDescription = null,
+                            tint = CyanPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Column {
+                            Text(
+                                text = "Pembaruan Aplikasi Rinova",
+                                color = TextPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Versi Saat Ini: v${BuildConfig.VERSION_NAME}",
+                                color = TextSecondary,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+
+                    when (val state = updateState) {
+                        is UpdateState.Idle, is UpdateState.Error -> {
+                            OutlinedButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        updateManager.checkForUpdates()
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Cek Update", color = CyanPrimary, fontSize = 11.sp)
+                            }
+                        }
+                        is UpdateState.Checking -> {
+                            Text("Memeriksa...", color = TextSecondary, fontSize = 12.sp)
+                        }
+                        is UpdateState.UpdateAvailable -> {
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        updateManager.downloadUpdate(
+                                            state.downloadUrl,
+                                            state.newVersion,
+                                            state.fileSizeBytes
+                                        )
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Download,
+                                    contentDescription = null,
+                                    tint = CyanOnPrimary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Unduh ${state.newVersion}", color = CyanOnPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        is UpdateState.Downloading -> {
+                            Text(
+                                text = "Mengunduh ${state.progressPercent}%",
+                                color = CyanPrimary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        is UpdateState.ReadyToInstall -> {
+                            Button(
+                                onClick = {
+                                    updateManager.installApk(state.apkFile)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = StatusSafe),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Install Sekarang", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                when (val state = updateState) {
+                    is UpdateState.Downloading -> {
+                        LinearProgressIndicator(
+                            progress = { state.progressPercent / 100f },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = CyanPrimary,
+                            trackColor = SlateSurfaceHighlight
+                        )
+                    }
+                    is UpdateState.UpdateAvailable -> {
+                        Text(
+                            text = "Tersedia versi baru ${state.newVersion} (${FileSizeFormatter.format(state.fileSizeBytes)}).",
+                            color = StatusSafe,
+                            fontSize = 12.sp
+                        )
+                    }
+                    is UpdateState.Error -> {
+                        Text(
+                            text = state.message,
+                            color = StatusCritical,
+                            fontSize = 12.sp
+                        )
+                    }
+                    else -> {}
                 }
             }
         }

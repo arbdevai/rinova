@@ -3,6 +3,7 @@ package com.rinova.app.core.di
 import android.content.Context
 import com.rinova.app.core.adb.AdbConnectionManager
 import com.rinova.app.core.ai.GeminiApiClient
+import com.rinova.app.core.update.UpdateManager
 import com.rinova.app.data.repository.AdbRepository
 import com.rinova.app.data.repository.AdwareHunterRepository
 import com.rinova.app.data.repository.AiDiagnosticRepository
@@ -25,4 +26,5 @@ class RinovaContainer(context: Context) {
         adwareRepo = adwareHunterRepository,
         geminiClient = geminiClient
     )
+    val updateManager = UpdateManager(context.applicationContext)
 }

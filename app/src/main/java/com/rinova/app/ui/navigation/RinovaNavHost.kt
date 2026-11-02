@@ -149,6 +149,7 @@ fun RinovaMainScreen(
                         connectionState = connectionState,
                         adbRepository = container.adbRepository,
                         storageRepository = container.storageRepository,
+                        updateManager = container.updateManager,
                         onNavigateToStorage = { currentTab = RinovaTab.STORAGE },
                         onNavigateToAdware = { currentTab = RinovaTab.ADWARE },
                         onNavigateToDebloat = { currentTab = RinovaTab.DEBLOAT },
