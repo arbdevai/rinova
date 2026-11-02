@@ -4,36 +4,94 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- Group Centered Inside 72dp Safe Zone -->
     <group
-        android:scaleX="0.84"
-        android:scaleY="0.84"
-        android:translateX="8.64"
-        android:translateY="8.64">
-        <!-- Security Shield Outline (Electric Cyan) -->
+        android:translateX="0"
+        android:translateY="0">
+
+        <!-- 1. Outer Smartphone Precision Chassis -->
         <path
-            android:fillColor="#00000000"
-            android:strokeColor="#00E5FF"
-            android:strokeWidth="4.5"
+            android:fillColor="#1B2028"
+            android:strokeColor="#E5E7EB"
+            android:strokeWidth="3.2"
             android:strokeLineCap="round"
             android:strokeLineJoin="round"
-            android:pathData="M 54,22 L 78,32 C 78,60 54,82 54,86 C 54,82 30,60 30,32 Z" />
-        <!-- Wireless Debugging Arc 1 (Crisp White) -->
+            android:pathData="M 44,28 L 64,28 C 68.4,28 72,31.6 72,36 L 72,72 C 72,76.4 68.4,80 64,80 L 44,80 C 39.6,80 36,76.4 36,72 L 36,36 C 36,31.6 39.6,28 44,28 Z" />
+
+        <!-- 2. Phone Top Speaker Notch -->
+        <path
+            android:fillColor="#9CA3AF"
+            android:pathData="M 50,32.5 L 58,32.5 C 58.6,32.5 59,32.9 59,33.5 C 59,34.1 58.6,34.5 58,34.5 L 50,34.5 C 49.4,34.5 49,34.1 49,33.5 C 49,32.9 49.4,32.5 50,32.5 Z" />
+
+        <!-- 3. Phone Bottom Home Indicator Bar -->
+        <path
+            android:fillColor="#6B7280"
+            android:pathData="M 50,75 L 58,75 C 58.6,75 59,75.4 59,76 C 59,76.6 58.6,77 58,77 L 50,77 C 49.4,77 49,76.6 49,76 C 49,75.4 49.4,75 50,75 Z" />
+
+        <!-- 4. Diagnostic Hardware Micro-Core (Citrus Orange) -->
+        <path
+            android:fillColor="#FF7A00"
+            android:pathData="M 47,47 L 61,47 C 62.1,47 63,47.9 63,49 L 63,59 C 63,60.1 62.1,61 61,61 L 47,61 C 45.9,61 45,60.1 45,59 L 45,49 C 45,47.9 45.9,47 47,47 Z" />
+
+        <!-- 5. Optical Telemetry Center Node (Bright Sun Amber) -->
+        <path
+            android:fillColor="#FFFBEB"
+            android:pathData="M 54,50 L 57.5,54 L 54,58 L 50.5,54 Z" />
+
+        <!-- 6. Precision Diagnostic Scanner Laser (Citrus Orange & Bright Core) -->
+        <!-- Horizontal Laser Beam Line across Device -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FF9800"
+            android:strokeWidth="2.8"
+            android:strokeLineCap="round"
+            android:pathData="M 28,54 L 80,54" />
+
+        <!-- Laser Beam Center Glow (White Core Pulse) -->
         <path
             android:fillColor="#00000000"
             android:strokeColor="#FFFFFF"
-            android:strokeWidth="4"
+            android:strokeWidth="1.2"
             android:strokeLineCap="round"
-            android:pathData="M 38,46 A 20,20 0 0 1 70,46" />
-        <!-- Wireless Debugging Arc 2 (Cyan Glow) -->
+            android:pathData="M 40,54 L 68,54" />
+
+        <!-- 7. Optical Scanner Crosshair Reticle Brackets (Citrus Orange) -->
+        <!-- Top-Left Bracket -->
         <path
             android:fillColor="#00000000"
-            android:strokeColor="#80DEEA"
-            android:strokeWidth="3.5"
+            android:strokeColor="#FFA048"
+            android:strokeWidth="2.2"
             android:strokeLineCap="round"
-            android:pathData="M 44,53 A 12,12 0 0 1 64,53" />
-        <!-- Diagnostic Lightning Pulse (Solid White) -->
+            android:strokeLineJoin="round"
+            android:pathData="M 40,46 L 40,41 L 45,41" />
+
+        <!-- Top-Right Bracket -->
         <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M 56,48 L 47,63 L 53,63 L 49,76 L 62,59 L 55,59 Z" />
+            android:fillColor="#00000000"
+            android:strokeColor="#FFA048"
+            android:strokeWidth="2.2"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M 63,41 L 68,41 L 68,46" />
+
+        <!-- Bottom-Left Bracket -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFA048"
+            android:strokeWidth="2.2"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M 40,62 L 40,67 L 45,67" />
+
+        <!-- Bottom-Right Bracket -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFA048"
+            android:strokeWidth="2.2"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M 63,67 L 68,67 L 68,62" />
+
     </group>
 </vector>

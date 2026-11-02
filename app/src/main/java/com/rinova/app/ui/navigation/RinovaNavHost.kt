@@ -8,18 +8,20 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.CleaningServices
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.FolderDelete
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -33,7 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rinova.app.core.di.RinovaContainer
 import com.rinova.app.core.model.AdbConnectionState
@@ -44,20 +45,14 @@ import com.rinova.app.ui.screens.connect.ConnectScreen
 import com.rinova.app.ui.screens.dashboard.DashboardScreen
 import com.rinova.app.ui.screens.debloat.DebloatScreen
 import com.rinova.app.ui.screens.storage.StorageScreen
-import com.rinova.app.ui.theme.CyanOnPrimary
-import com.rinova.app.ui.theme.CyanPrimary
-import com.rinova.app.ui.theme.SlateBackground
-import com.rinova.app.ui.theme.SlateSurface
-import com.rinova.app.ui.theme.SlateSurfaceVariant
-import com.rinova.app.ui.theme.TextPrimary
-import com.rinova.app.ui.theme.TextSecondary
+import com.rinova.app.ui.theme.OutlineVariant
 
 enum class RinovaTab(val label: String, val icon: ImageVector) {
-    CONNECT("Sambungan", Icons.Default.Wifi),
-    DASHBOARD("Status", Icons.Default.Dashboard),
-    STORAGE("Storage", Icons.Default.CleaningServices),
-    ADWARE("Adware", Icons.Default.Shield),
-    DEBLOAT("Debloat", Icons.Default.Build),
+    CONNECT("Sambungan", Icons.Default.Devices),
+    DASHBOARD("Status", Icons.Default.Speed),
+    STORAGE("Storage", Icons.Default.FolderDelete),
+    ADWARE("Adware", Icons.Default.Security),
+    DEBLOAT("Debloat", Icons.Default.DeleteSweep),
     AI("AI Audit", Icons.Default.AutoAwesome)
 }
 
@@ -82,8 +77,10 @@ fun RinovaMainScreen(
         },
         bottomBar = {
             NavigationBar(
-                containerColor = SlateSurface,
-                modifier = Modifier.fillMaxWidth()
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(width = 0.8.dp, color = OutlineVariant)
             ) {
                 RinovaTab.values().forEach { tab ->
                     val isSelected = currentTab == tab
@@ -99,29 +96,29 @@ fun RinovaMainScreen(
                         label = {
                             Text(
                                 text = tab.label,
-                                fontSize = 10.sp,
+                                style = MaterialTheme.typography.labelSmall,
                                 maxLines = 1
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = CyanOnPrimary,
-                            selectedTextColor = CyanPrimary,
-                            indicatorColor = CyanPrimary,
-                            unselectedIconColor = TextSecondary,
-                            unselectedTextColor = TextSecondary
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
                 }
             }
         },
-        containerColor = SlateBackground,
+        containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(SlateBackground)
+                .background(MaterialTheme.colorScheme.background)
         ) {
             AnimatedContent(
                 targetState = currentTab,
@@ -156,18 +153,26 @@ fun RinovaMainScreen(
                         onNavigateToAi = { currentTab = RinovaTab.AI }
                     )
                     RinovaTab.STORAGE -> StorageScreen(
-                        storageRepository = container.storageRepository
+                        storageRepository = container.storageRepository,
+                        adbRepository = container.adbRepository
                     )
                     RinovaTab.ADWARE -> AdwareHunterScreen(
-                        adwareHunterRepository = container.adwareHunterRepository
+                        adwareRepository = container.adwareRepository,
+                        adbRepository = container.adbRepository
                     )
                     RinovaTab.DEBLOAT -> DebloatScreen(
                         debloatRepository = container.debloatRepository,
-                        connectionState = connectionState
+                        adbRepository = container.adbRepository,
+                        deviceInfo = (connectionState as? AdbConnectionState.Connected)?.device
                     )
                     RinovaTab.AI -> AiDiagnosticScreen(
-                        aiRepository = container.aiDiagnosticRepository,
-                        settingsRepository = container.settingsRepository
+                        geminiApiClient = container.geminiApiClient,
+                        settingsRepository = container.settingsRepository,
+                        adbRepository = container.adbRepository,
+                        storageRepository = container.storageRepository,
+                        adwareRepository = container.adwareRepository,
+                        debloatRepository = container.debloatRepository,
+                        deviceInfo = (connectionState as? AdbConnectionState.Connected)?.device
                     )
                 }
             }

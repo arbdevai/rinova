@@ -1,6 +1,8 @@
 package com.rinova.app.ui.screens.dashboard
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,20 +19,32 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,34 +56,31 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.rinova.app.core.update.UpdateManager
-import com.rinova.app.core.update.UpdateState
-import com.rinova.app.core.util.FileSizeFormatter
-import androidx.compose.material.icons.filled.SystemUpdate
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material3.LinearProgressIndicator
 import com.rinova.app.BuildConfig
 import com.rinova.app.core.model.AdbConnectionState
 import com.rinova.app.core.model.DeviceInfo
+import com.rinova.app.core.update.UpdateManager
+import com.rinova.app.core.update.UpdateState
+import com.rinova.app.core.util.FileSizeFormatter
 import com.rinova.app.data.repository.AdbRepository
 import com.rinova.app.data.repository.StorageRepository
 import com.rinova.app.ui.components.AlertType
 import com.rinova.app.ui.components.CustomActionDialog
-import com.rinova.app.ui.theme.CyanOnPrimary
-import com.rinova.app.ui.theme.CyanPrimary
-import com.rinova.app.ui.theme.SlateBackground
-import com.rinova.app.ui.theme.SlateSurface
-import com.rinova.app.ui.theme.SlateSurfaceHighlight
-import com.rinova.app.ui.theme.SlateSurfaceVariant
+import com.rinova.app.ui.theme.Outline
+import com.rinova.app.ui.theme.OutlineVariant
+import com.rinova.app.ui.theme.Primary
+import com.rinova.app.ui.theme.PrimaryContainer
 import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
-import com.rinova.app.ui.theme.TextPrimary
-import com.rinova.app.ui.theme.TextSecondary
+import com.rinova.app.ui.theme.SurfaceContainer
+import com.rinova.app.ui.theme.SurfaceContainerHigh
+import com.rinova.app.ui.theme.SurfaceContainerLow
 import kotlinx.coroutines.launch
 
 @Composable
@@ -112,32 +123,47 @@ fun DashboardScreen(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(SlateBackground)
+                .background(MaterialTheme.colorScheme.background)
                 .padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+                border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(
-                    imageVector = Icons.Default.PhoneAndroid,
-                    contentDescription = null,
-                    tint = TextSecondary,
-                    modifier = Modifier.size(56.dp)
-                )
-                Text(
-                    text = "Perangkat Belum Terhubung",
-                    color = TextPrimary,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Sambungkan ke HP target melalui menu 'Sambungan' terlebih dahulu.",
-                    color = TextSecondary,
-                    fontSize = 13.sp,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceContainerHigh),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PhoneAndroid,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                    Text(
+                        text = "Perangkat Belum Terhubung",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Buka tab 'Sambungan' untuk menghubungkan ponsel target melalui ADB Wireless (Kode 6-Digit atau QR Code).",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
             }
         }
         return
@@ -148,107 +174,25 @@ fun DashboardScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(SlateBackground)
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Device Identification Banner
+        // HERO CARD: DEVICE IDENTITY (Google Material 3 Standard)
         Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SlateSurface),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "${device.brand} ${device.model}",
-                            color = TextPrimary,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "${device.manufacturer} • Codename: ${device.deviceCodename.ifEmpty { "Generic" }}",
-                            color = CyanPrimary,
-                            fontSize = 12.sp
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(StatusSafe.copy(alpha = 0.15f))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = "ONLINE",
-                            color = StatusSafe,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                // Stats Grid
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    StatPill(
-                        label = "OS Version",
-                        value = "Android ${device.androidVersion} (SDK ${device.sdkInt})",
-                        modifier = Modifier.weight(1f)
-                    )
-                    StatPill(
-                        label = "Custom UI",
-                        value = device.customRomBrand,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    val batText = if (device.batteryLevel >= 0) "${device.batteryLevel}%${if (device.isCharging) " (Charging)" else ""}" else "N/A"
-                    StatPill(
-                        label = "Baterai",
-                        value = batText,
-                        modifier = Modifier.weight(1f)
-                    )
-                    val ramText = if (device.totalRamMb > 0) "${device.freeRamMb} / ${device.totalRamMb} MB" else "N/A"
-                    StatPill(
-                        label = "RAM Tersedia",
-                        value = ramText,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-
-        // In-App Update Card
-        Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SlateSurface),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
+                // Header Device Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -256,142 +200,119 @@ fun DashboardScreen(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.SystemUpdate,
-                            contentDescription = null,
-                            tint = CyanPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(PrimaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PhoneAndroid,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                         Column {
                             Text(
-                                text = "Pembaruan Aplikasi Rinova",
-                                color = TextPrimary,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
+                                text = "${device.brand} ${device.model}",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1
                             )
                             Text(
-                                text = "Versi Saat Ini: v${BuildConfig.VERSION_NAME}",
-                                color = TextSecondary,
-                                fontSize = 11.sp
+                                text = "${device.manufacturer} • ${device.deviceCodename.ifEmpty { "Generic" }}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
-                    when (val state = updateState) {
-                        is UpdateState.Idle, is UpdateState.Error -> {
-                            OutlinedButton(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        updateManager.checkForUpdates()
-                                    }
-                                },
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Cek Update", color = CyanPrimary, fontSize = 11.sp)
-                            }
-                        }
-                        is UpdateState.Checking -> {
-                            Text("Memeriksa...", color = TextSecondary, fontSize = 12.sp)
-                        }
-                        is UpdateState.UpdateAvailable -> {
-                            Button(
-                                onClick = {
-                                    coroutineScope.launch {
-                                        updateManager.downloadUpdate(
-                                            state.downloadUrl,
-                                            state.newVersion,
-                                            state.fileSizeBytes
-                                        )
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Download,
-                                    contentDescription = null,
-                                    tint = CyanOnPrimary,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Unduh ${state.newVersion}", color = CyanOnPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        is UpdateState.Downloading -> {
+                    // Tonal Online Pill
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(StatusSafe.copy(alpha = 0.15f))
+                            .border(0.8.dp, StatusSafe.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(StatusSafe)
+                            )
                             Text(
-                                text = "Mengunduh ${state.progressPercent}%",
-                                color = CyanPrimary,
-                                fontSize = 12.sp,
+                                text = "ONLINE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = StatusSafe,
                                 fontWeight = FontWeight.Bold
                             )
-                        }
-                        is UpdateState.ReadyToInstall -> {
-                            Button(
-                                onClick = {
-                                    updateManager.installApk(state.apkFile)
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = StatusSafe),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Install Sekarang", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
                         }
                     }
                 }
 
-                when (val state = updateState) {
-                    is UpdateState.Downloading -> {
-                        LinearProgressIndicator(
-                            progress = { state.progressPercent / 100f },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(3.dp)),
-                            color = CyanPrimary,
-                            trackColor = SlateSurfaceHighlight
-                        )
-                    }
-                    is UpdateState.UpdateAvailable -> {
-                        Text(
-                            text = "Tersedia versi baru ${state.newVersion} (${FileSizeFormatter.format(state.fileSizeBytes)}).",
-                            color = StatusSafe,
-                            fontSize = 12.sp
-                        )
-                    }
-                    is UpdateState.Error -> {
-                        Text(
-                            text = state.message,
-                            color = StatusCritical,
-                            fontSize = 12.sp
-                        )
-                    }
-                    else -> {}
+                // BENTO TELEMETRY GRID (4 Balanced Metric Tiles)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    BentoTile(
+                        icon = Icons.Default.Speed,
+                        label = "Sistem Operasi",
+                        primaryValue = "Android ${device.androidVersion}",
+                        subValue = "SDK ${device.sdkInt} • Patch ${device.securityPatch}",
+                        modifier = Modifier.weight(1f)
+                    )
+                    BentoTile(
+                        icon = Icons.Default.Build,
+                        label = "Custom ROM",
+                        primaryValue = device.customRomBrand,
+                        subValue = device.cpuAbi,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val batText = if (device.batteryLevel >= 0) "${device.batteryLevel}%" else "N/A"
+                    val batStatus = if (device.isCharging) "Mengisi Daya" else "Baterai Normal"
+                    BentoTile(
+                        icon = Icons.Default.BatteryChargingFull,
+                        label = "Baterai",
+                        primaryValue = batText,
+                        subValue = batStatus,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    val ramPrimary = if (device.totalRamMb > 0) "${device.freeRamMb} MB" else "N/A"
+                    val ramSub = if (device.totalRamMb > 0) "Bebas dari ${device.totalRamMb} MB" else "RAM Telemetri"
+                    BentoTile(
+                        icon = Icons.Default.Memory,
+                        label = "Memori RAM",
+                        primaryValue = ramPrimary,
+                        subValue = ramSub,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
 
-        if (actionFeedback != null) {
-            Card(
-                shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.cardColors(containerColor = SlateSurfaceHighlight),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = actionFeedback ?: "",
-                    color = TextPrimary,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(14.dp)
-                )
-            }
-        }
-
-        // Quick Technician Tools
+        // QUICK TECHNICIAN CONTROLS (Grouped Clean Architecture)
         Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SlateSurface),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -402,74 +323,11 @@ fun DashboardScreen(
             ) {
                 Text(
                     text = "Aksi Cepat Teknisi",
-                    color = TextPrimary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            dialogTitle = "Reboot Target"
-                            dialogMessage = "Mulai ulang HP target ke sistem normal?"
-                            dialogCommand = "reboot"
-                            dialogAlertType = AlertType.WARNING
-                            onConfirmAction = {
-                                coroutineScope.launch {
-                                    adbRepository.rebootTarget()
-                                    actionFeedback = "Perintah reboot normal terkirim."
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Reboot", color = TextPrimary, fontSize = 12.sp)
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            dialogTitle = "Reboot ke Recovery"
-                            dialogMessage = "Masuk ke mode Recovery HP target untuk wipe cache atau sideload firmware?"
-                            dialogCommand = "reboot recovery"
-                            dialogAlertType = AlertType.CRITICAL
-                            onConfirmAction = {
-                                coroutineScope.launch {
-                                    adbRepository.rebootTarget("recovery")
-                                    actionFeedback = "Perintah reboot recovery terkirim."
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Recovery", color = StatusWarning, fontSize = 12.sp)
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            dialogTitle = "Reboot ke Safe Mode"
-                            dialogMessage = "Masuk ke Safe Mode target? Seluruh aplikasi pihak ketiga dan malware akan dinonaktifkan sementara."
-                            dialogCommand = "setprop persist.sys.safemode 1 && reboot"
-                            dialogAlertType = AlertType.CRITICAL
-                            onConfirmAction = {
-                                coroutineScope.launch {
-                                    adbRepository.executeCommand("setprop persist.sys.safemode 1")
-                                    adbRepository.rebootTarget()
-                                    actionFeedback = "Target dimatikan untuk masuk ke Safe Mode."
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Safe Mode", color = CyanPrimary, fontSize = 12.sp)
-                    }
-                }
-
+                // Primary Quick Action: Trim System Caches
                 Button(
                     onClick = {
                         dialogTitle = "Paksa Bersihkan Cache Sistem"
@@ -486,39 +344,236 @@ fun DashboardScreen(
                             }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.CleaningServices,
                         contentDescription = null,
-                        tint = CyanOnPrimary,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Trim Cache Sistem Instan",
-                        color = CyanOnPrimary,
-                        fontWeight = FontWeight.Bold
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        style = MaterialTheme.typography.labelLarge
                     )
+                }
+
+                // Secondary Actions Row: Reboot Target / Safe Mode
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    FilledTonalButton(
+                        onClick = {
+                            dialogTitle = "Reboot Target"
+                            dialogMessage = "Mulai ulang HP target ke sistem normal?"
+                            dialogCommand = "reboot"
+                            dialogAlertType = AlertType.WARNING
+                            onConfirmAction = {
+                                coroutineScope.launch {
+                                    adbRepository.rebootTarget()
+                                    actionFeedback = "Perintah reboot normal terkirim."
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = FilledTonalButtonDefaults.filledTonalButtonColors(containerColor = SurfaceContainerHigh),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Reboot", style = MaterialTheme.typography.labelMedium)
+                    }
+
+                    FilledTonalButton(
+                        onClick = {
+                            dialogTitle = "Reboot ke Safe Mode"
+                            dialogMessage = "Masuk ke Safe Mode target? Seluruh aplikasi pihak ketiga dan malware akan dinonaktifkan sementara."
+                            dialogCommand = "setprop persist.sys.safemode 1 && reboot"
+                            dialogAlertType = AlertType.CRITICAL
+                            onConfirmAction = {
+                                coroutineScope.launch {
+                                    adbRepository.executeCommand("setprop persist.sys.safemode 1")
+                                    adbRepository.rebootTarget()
+                                    actionFeedback = "Target dimatikan untuk masuk ke Safe Mode."
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = FilledTonalButtonDefaults.filledTonalButtonColors(containerColor = SurfaceContainerHigh),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Safe Mode", style = MaterialTheme.typography.labelMedium)
+                    }
                 }
             }
         }
 
-        // Feature Shortcuts
+        // IN-APP UPDATE CARD (Pixel System Update Style)
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(SurfaceContainerHigh),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SystemUpdate,
+                                contentDescription = null,
+                                tint = Primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Pembaruan Rinova",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Versi Saat Ini: v${BuildConfig.VERSION_NAME}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    when (val state = updateState) {
+                        is UpdateState.Idle, is UpdateState.Error -> {
+                            OutlinedButton(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        updateManager.checkForUpdates()
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Cek Update", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        is UpdateState.Checking -> {
+                            Text("Memeriksa...", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        is UpdateState.UpdateAvailable -> {
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        updateManager.downloadUpdate(
+                                            state.downloadUrl,
+                                            state.newVersion,
+                                            state.fileSizeBytes
+                                        )
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(imageVector = Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Unduh ${state.newVersion}", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        is UpdateState.Downloading -> {
+                            Text("${state.progressPercent}%", style = MaterialTheme.typography.labelSmall, color = Primary)
+                        }
+                        is UpdateState.ReadyToInstall -> {
+                            Button(
+                                onClick = { updateManager.installApk(state.apkFile) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = StatusSafe)
+                            ) {
+                                Text("Pasang Update", color = Color.Black, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+
+                when (val state = updateState) {
+                    is UpdateState.Downloading -> {
+                        LinearProgressIndicator(
+                            progress = { state.progressPercent / 100f },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = Primary,
+                            trackColor = SurfaceContainerHigh
+                        )
+                    }
+                    is UpdateState.UpdateAvailable -> {
+                        Text(
+                            text = "Tersedia versi baru ${state.newVersion} (${FileSizeFormatter.format(state.fileSizeBytes)}).",
+                            color = StatusSafe,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    is UpdateState.Error -> {
+                        Text(
+                            text = state.message,
+                            color = StatusCritical,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    else -> {}
+                }
+            }
+        }
+
+        if (actionFeedback != null) {
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = SurfaceContainerHigh),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = actionFeedback ?: "",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(14.dp)
+                )
+            }
+        }
+
+        // DIAGNOSTIC MODULES (Clean Production List)
         Text(
             text = "Modul Diagnostik",
-            color = TextPrimary,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         FeatureRowCard(
             title = "Deep Storage & Ghost Cache Buster",
             subtitle = "Pindai sisa folder OBB aplikasi terhapus dan crash dump di /sdcard",
             icon = Icons.Default.CleaningServices,
-            accentColor = CyanPrimary,
             onClick = onNavigateToStorage
         )
 
@@ -526,7 +581,6 @@ fun DashboardScreen(
             title = "Virus Iklan & Rogue Overlay Hunter",
             subtitle = "Tangkap iklan pop-up aktif dan audit aplikasi tanpa ikon launcher",
             icon = Icons.Default.Shield,
-            accentColor = StatusCritical,
             onClick = onNavigateToAdware
         )
 
@@ -534,35 +588,64 @@ fun DashboardScreen(
             title = "Universal Vendor Debloater",
             subtitle = "Nonaktifkan aman paket bloatware Xiaomi, Samsung, Oppo, Vivo, Infinix",
             icon = Icons.Default.Build,
-            accentColor = StatusWarning,
             onClick = onNavigateToDebloat
         )
 
         FeatureRowCard(
             title = "Gemini AI Diagnostic Engine",
             subtitle = "Audit sistem berbasis bukti empiris dan rekomendasi eksekusi terkontrol",
-            icon = Icons.Default.Memory,
-            accentColor = StatusSafe,
+            icon = Icons.Default.AutoAwesome,
             onClick = onNavigateToAi
         )
     }
 }
 
 @Composable
-private fun StatPill(
+private fun BentoTile(
+    icon: ImageVector,
     label: String,
-    value: String,
+    primaryValue: String,
+    subValue: String,
     modifier: Modifier = Modifier
 ) {
     Card(
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = SlateSurfaceVariant),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceContainerHigh),
+        border = androidx.compose.foundation.BorderStroke(0.8.dp, OutlineVariant),
         modifier = modifier
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Text(text = label, color = TextSecondary, fontSize = 10.sp)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(text = value, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Primary,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = primaryValue,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1
+            )
+            Text(
+                text = subValue,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
+            )
         }
     }
 }
@@ -571,52 +654,57 @@ private fun StatPill(
 private fun FeatureRowCard(
     title: String,
     subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    accentColor: Color,
+    icon: ImageVector,
     onClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = SlateSurface),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+        border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Box(
                 modifier = Modifier
                     .size(42.dp)
-                    .clip(CircleShape)
-                    .background(accentColor.copy(alpha = 0.15f)),
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(PrimaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = accentColor,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.size(22.dp)
                 )
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    color = TextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
-                    color = TextSecondary,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp
                 )
             }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }

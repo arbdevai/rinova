@@ -1,15 +1,25 @@
 package com.rinova.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,14 +30,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rinova.app.core.model.AdbConnectionState
-import com.rinova.app.ui.theme.CyanPrimary
-import com.rinova.app.ui.theme.SlateBackground
-import com.rinova.app.ui.theme.SlateSurfaceVariant
+import com.rinova.app.ui.theme.OutlineVariant
+import com.rinova.app.ui.theme.Primary
 import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
-import com.rinova.app.ui.theme.TextPrimary
-import com.rinova.app.ui.theme.TextSecondary
+import com.rinova.app.ui.theme.SurfaceContainerHigh
+import com.rinova.app.ui.theme.SurfaceContainerLow
 
 @Composable
 fun AppTopBar(
@@ -35,8 +44,10 @@ fun AppTopBar(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        color = SlateBackground,
-        modifier = modifier.fillMaxWidth()
+        color = MaterialTheme.colorScheme.background,
+        modifier = modifier
+            .fillMaxWidth()
+            .border(width = 1.dp, color = OutlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -45,61 +56,107 @@ fun AppTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "RINOVA",
-                        color = CyanPrimary,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp
-                    )
-                    Text(
-                        text = "TOOLKIT",
-                        color = TextSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                Text(
-                    text = "ADB Wireless Diagnostics & Hunter",
-                    color = TextSecondary,
-                    fontSize = 11.sp
-                )
-            }
-
-            // Connection Badge
-            val (statusText, statusColor) = when (connectionState) {
-                is AdbConnectionState.Connected -> Pair("${connectionState.device.brand} ${connectionState.device.model}", StatusSafe)
-                is AdbConnectionState.Connecting, is AdbConnectionState.Authorizing -> Pair("Menghubungkan...", StatusWarning)
-                is AdbConnectionState.Error -> Pair("Gagal Terhubung", StatusCritical)
-                is AdbConnectionState.Disconnected -> Pair("Terputus", TextSecondary)
-            }
-
+            // Brand & App Identity
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(SlateSurfaceVariant)
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(statusColor)
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Build,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Rinova",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                                .padding(horizontal = 5.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "PRO",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Diagnostik & Pemulihan Ponsel",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Connection Telemetry Badge (Google Tonal Chip)
+            val (badgeText, badgeColor, badgeIcon) = when (connectionState) {
+                is AdbConnectionState.Connected -> Triple(
+                    "${connectionState.device.brand} ${connectionState.device.model}",
+                    StatusSafe,
+                    Icons.Default.CheckCircle
                 )
-                Text(
-                    text = statusText,
-                    color = TextPrimary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1
+                is AdbConnectionState.Connecting, is AdbConnectionState.Authorizing -> Triple(
+                    "Otorisasi...",
+                    StatusWarning,
+                    Icons.Default.Sync
                 )
+                is AdbConnectionState.Error -> Triple(
+                    "Koneksi Gagal",
+                    StatusCritical,
+                    Icons.Default.CloudOff
+                )
+                is AdbConnectionState.Disconnected -> Triple(
+                    "Belum Terhubung",
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                    Icons.Default.CloudOff
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(SurfaceContainerHigh)
+                    .border(0.8.dp, OutlineVariant, RoundedCornerShape(20.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(badgeColor)
+                    )
+                    Text(
+                        text = badgeText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
+                    )
+                }
             }
         }
     }

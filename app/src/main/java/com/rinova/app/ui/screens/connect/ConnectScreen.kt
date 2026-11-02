@@ -24,8 +24,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material.icons.filled.Wifi
@@ -34,6 +35,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -61,17 +63,15 @@ import com.rinova.app.core.model.AdbConnectionState
 import com.rinova.app.core.util.QrCodeGenerator
 import com.rinova.app.data.repository.AdbRepository
 import com.rinova.app.data.repository.SettingsRepository
-import com.rinova.app.ui.theme.CyanOnPrimary
-import com.rinova.app.ui.theme.CyanPrimary
-import com.rinova.app.ui.theme.SlateBackground
-import com.rinova.app.ui.theme.SlateSurface
-import com.rinova.app.ui.theme.SlateSurfaceHighlight
-import com.rinova.app.ui.theme.SlateSurfaceVariant
+import com.rinova.app.ui.theme.Outline
+import com.rinova.app.ui.theme.OutlineVariant
+import com.rinova.app.ui.theme.Primary
+import com.rinova.app.ui.theme.PrimaryContainer
 import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
-import com.rinova.app.ui.theme.TextPrimary
-import com.rinova.app.ui.theme.TextSecondary
+import com.rinova.app.ui.theme.SurfaceContainerHigh
+import com.rinova.app.ui.theme.SurfaceContainerLow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -101,8 +101,8 @@ fun ConnectScreen(
             QrCodeGenerator.createQrCodeBitmap(
                 QrCodeGenerator.generateAdbPairingPayload(qrServiceName, qrPassword),
                 512,
-                Color.White,
-                Color(0xFF0F172A)
+                Color.Black,
+                Color.White
             )
         )
     }
@@ -127,13 +127,13 @@ fun ConnectScreen(
         qrServiceName = newService
         qrPassword = newPass
         val payload = QrCodeGenerator.generateAdbPairingPayload(newService, newPass)
-        qrBitmap = QrCodeGenerator.createQrCodeBitmap(payload, 512, Color.White, Color(0xFF0F172A))
+        qrBitmap = QrCodeGenerator.createQrCodeBitmap(payload, 512, Color.Black, Color.White)
     }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(SlateBackground)
+            .background(MaterialTheme.colorScheme.background)
             .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
@@ -141,8 +141,9 @@ fun ConnectScreen(
     ) {
         // Status Card
         Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SlateSurface),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -161,7 +162,7 @@ fun ConnectScreen(
                     is AdbConnectionState.Connecting, is AdbConnectionState.Authorizing -> Triple(
                         StatusWarning,
                         "Menghubungkan ke $ipInput:$portInput...",
-                        "Menunggu respon otorisasi RSA dari target"
+                        "Menunggu otorisasi RSA dari target"
                     )
                     is AdbConnectionState.Error -> Triple(
                         StatusCritical,
@@ -169,7 +170,7 @@ fun ConnectScreen(
                         connectionState.message
                     )
                     is AdbConnectionState.Disconnected -> Triple(
-                        TextSecondary,
+                        MaterialTheme.colorScheme.onSurfaceVariant,
                         "Belum Terhubung",
                         "Pilih metode sambungan di bawah untuk mulai"
                     )
@@ -177,13 +178,13 @@ fun ConnectScreen(
 
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                         .background(color.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = if (connectionState is AdbConnectionState.Connected) Icons.Default.CheckCircle else Icons.Default.Wifi,
+                        imageVector = if (connectionState is AdbConnectionState.Connected) Icons.Default.CheckCircle else Icons.Default.Devices,
                         contentDescription = null,
                         tint = color,
                         modifier = Modifier.size(24.dp)
@@ -193,34 +194,34 @@ fun ConnectScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
-                        color = TextPrimary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = subtitle,
-                        color = TextSecondary,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 16.sp
                     )
                 }
             }
         }
 
-        // Mode Switcher Tabs
+        // Segmented Mode Switcher (Google Material 3 Container)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(SlateSurface)
+                .clip(RoundedCornerShape(14.dp))
+                .background(SurfaceContainerLow)
+                .border(1.dp, OutlineVariant, RoundedCornerShape(14.dp))
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             val tabs = listOf(
-                Triple(0, "Langsung", Icons.Default.Wifi),
+                Triple(0, "Langsung", Icons.Default.Devices),
                 Triple(1, "Kode 6-Digit", Icons.Default.VpnKey),
-                Triple(2, "QR Code", Icons.Default.QrCode)
+                Triple(2, "QR Code", Icons.Default.QrCodeScanner)
             )
 
             tabs.forEach { (index, title, icon) ->
@@ -228,8 +229,8 @@ fun ConnectScreen(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSelected) CyanPrimary.copy(alpha = 0.2f) else Color.Transparent)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isSelected) PrimaryContainer else Color.Transparent)
                         .clickable {
                             selectedTab = index
                             errorMessage = null
@@ -245,13 +246,13 @@ fun ConnectScreen(
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            tint = if (isSelected) CyanPrimary else TextSecondary,
+                            tint = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = title,
-                            color = if (isSelected) CyanPrimary else TextSecondary,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                         )
                     }
@@ -259,16 +260,17 @@ fun ConnectScreen(
             }
         }
 
-        // Form Card per Tab
+        // Form Card per Mode
         Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SlateSurface),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 when (selectedTab) {
@@ -276,14 +278,13 @@ fun ConnectScreen(
                         // TAB 0: KONEKSI LANGSUNG
                         Text(
                             text = "Koneksi Langsung (Sudah Pernah Di-Pair)",
-                            color = TextPrimary,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Gunakan mode ini jika perangkat sudah pernah di-pairing sebelumnya atau menggunakan port tetap (5555).",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
+                            text = "Gunakan mode ini jika ponsel sudah pernah dipasangkan sebelumnya atau port ADB default (5555).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 16.sp
                         )
 
@@ -294,7 +295,7 @@ fun ConnectScreen(
                             placeholder = { Text("Contoh: 192.168.1.14") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = outlinedColors(),
+                            colors = m3OutlinedColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -305,7 +306,7 @@ fun ConnectScreen(
                             placeholder = { Text("Contoh: 39485 atau 5555") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = outlinedColors(),
+                            colors = m3OutlinedColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -314,14 +315,13 @@ fun ConnectScreen(
                         // TAB 1: PAIRING KODE 6-DIGIT (ANDROID 11-14+)
                         Text(
                             text = "Pairing Kode 6-Digit (Android 11 - 14+)",
-                            color = TextPrimary,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Di HP target: Masuk ke Pengaturan > Opsi Pengembang > Debugging Nirkabel > 'Sandingkan perangkat dengan kode pemasangan'.",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 16.sp
                         )
 
@@ -332,7 +332,7 @@ fun ConnectScreen(
                             placeholder = { Text("Contoh: 192.168.1.14") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = outlinedColors(),
+                            colors = m3OutlinedColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -347,7 +347,7 @@ fun ConnectScreen(
                                 placeholder = { Text("Misal: 37393") },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                colors = outlinedColors(),
+                                colors = m3OutlinedColors(),
                                 modifier = Modifier.weight(1f)
                             )
 
@@ -358,7 +358,7 @@ fun ConnectScreen(
                                 placeholder = { Text("Misal: 102118") },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                colors = outlinedColors(),
+                                colors = m3OutlinedColors(),
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -370,7 +370,7 @@ fun ConnectScreen(
                             placeholder = { Text("Misal: 39485") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = outlinedColors(),
+                            colors = m3OutlinedColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -378,42 +378,46 @@ fun ConnectScreen(
                     2 -> {
                         // TAB 2: PAIRING QR CODE (ANDROID 11-14+)
                         Text(
-                            text = "Pairing QR Code Nirkabel",
-                            color = TextPrimary,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
+                            text = "Pairing QR Code Nirkabel (AOSP Standard)",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Di HP target: Buka menu Debugging Nirkabel > 'Sandingkan perangkat dengan kode QR' lalu arahkan kamera target ke QR Code ini.",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 16.sp
                         )
 
-                        // QR Code Container
+                        // QR Code High-Contrast Frame
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF0F172A))
-                                .border(1.dp, SlateSurfaceHighlight, RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(SurfaceContainerHigh)
+                                .border(1.dp, OutlineVariant, RoundedCornerShape(16.dp))
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 if (qrBitmap != null) {
-                                    Image(
-                                        bitmap = qrBitmap!!.asImageBitmap(),
-                                        contentDescription = "QR Code ADB Wireless",
+                                    Box(
                                         modifier = Modifier
-                                            .size(200.dp)
-                                            .clip(RoundedCornerShape(8.dp))
+                                            .size(208.dp)
+                                            .clip(RoundedCornerShape(12.dp))
                                             .background(Color.White)
-                                            .padding(8.dp)
-                                    )
+                                            .padding(10.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                            bitmap = qrBitmap!!.asImageBitmap(),
+                                            contentDescription = "QR Code ADB Wireless",
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
                                 }
 
                                 Row(
@@ -424,31 +428,31 @@ fun ConnectScreen(
                                     Column {
                                         Text(
                                             text = "Service: $qrServiceName",
-                                            color = CyanPrimary,
-                                            fontSize = 11.sp,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = Primary,
                                             fontFamily = FontFamily.Monospace,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
                                             text = "PIN Pairing: $qrPassword",
-                                            color = TextSecondary,
-                                            fontSize = 11.sp,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             fontFamily = FontFamily.Monospace
                                         )
                                     }
 
                                     OutlinedButton(
                                         onClick = { regenerateQrCode() },
-                                        shape = RoundedCornerShape(6.dp)
+                                        shape = RoundedCornerShape(8.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Refresh,
                                             contentDescription = null,
-                                            tint = CyanPrimary,
+                                            tint = Primary,
                                             modifier = Modifier.size(14.dp)
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Acak QR", fontSize = 11.sp, color = CyanPrimary)
+                                        Text("Acak QR", style = MaterialTheme.typography.labelSmall)
                                     }
                                 }
                             }
@@ -461,7 +465,7 @@ fun ConnectScreen(
                             placeholder = { Text("Contoh: 192.168.1.14") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = outlinedColors(),
+                            colors = m3OutlinedColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -472,7 +476,7 @@ fun ConnectScreen(
                             placeholder = { Text("Misal: 39485") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            colors = outlinedColors(),
+                            colors = m3OutlinedColors(),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -482,7 +486,7 @@ fun ConnectScreen(
                     Text(
                         text = statusFeedbackMessage ?: "",
                         color = StatusSafe,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -491,7 +495,7 @@ fun ConnectScreen(
                     Text(
                         text = errorMessage ?: "",
                         color = StatusCritical,
-                        fontSize = 12.sp
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
 
@@ -506,18 +510,17 @@ fun ConnectScreen(
                                     adbRepository.disconnect()
                                 }
                             },
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Putuskan Sambungan", color = StatusCritical)
+                            Text("Putuskan", color = StatusCritical, style = MaterialTheme.typography.labelMedium)
                         }
                         Button(
                             onClick = onConnectSuccess,
-                            colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Buka Dashboard", color = CyanOnPrimary, fontWeight = FontWeight.Bold)
+                            Text("Buka Dashboard", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 } else {
@@ -540,7 +543,7 @@ fun ConnectScreen(
                                 settingsRepository.saveLastConnection(cleanIp, portInput.trim())
 
                                 if (selectedTab == 1) {
-                                    // Eksekusi Pairing Kode 6 Digit terlebih dahulu
+                                    // Eksekusi Pairing Kode 6 Digit
                                     val pairPort = pairingPortInput.trim().toIntOrNull()
                                     val pairCode = pairingCodeInput.trim()
 
@@ -578,8 +581,7 @@ fun ConnectScreen(
                             }
                         },
                         enabled = !isSubmitting,
-                        colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp)
@@ -592,18 +594,18 @@ fun ConnectScreen(
                         }
                         Text(
                             text = buttonText,
-                            color = CyanOnPrimary,
-                            fontWeight = FontWeight.Bold
+                            style = MaterialTheme.typography.labelLarge
                         )
                     }
                 }
             }
         }
 
-        // Petunjuk Lapangan Teknisi Card
+        // Panduan Lapangan Teknisi Card (Google M3 Accordion Style)
         Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SlateSurfaceVariant),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = SurfaceContainerLow),
+            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineVariant),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
@@ -619,14 +621,13 @@ fun ConnectScreen(
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = null,
-                        tint = CyanPrimary,
+                        tint = Primary,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
                         text = "Panduan Lapangan Teknisi (Android 11 - 14+):",
-                        color = TextPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -645,15 +646,15 @@ fun ConnectScreen(
                     ) {
                         Text(
                             text = "${idx + 1}.",
-                            color = CyanPrimary,
-                            fontSize = 12.sp,
+                            color = Primary,
+                            style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = step,
-                            color = TextSecondary,
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
+                            lineHeight = 16.sp
                         )
                     }
                 }
@@ -663,12 +664,12 @@ fun ConnectScreen(
 }
 
 @Composable
-private fun outlinedColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = CyanPrimary,
-    unfocusedBorderColor = SlateSurfaceHighlight,
-    focusedLabelColor = CyanPrimary,
-    unfocusedLabelColor = TextSecondary,
-    focusedTextColor = TextPrimary,
-    unfocusedTextColor = TextPrimary,
-    cursorColor = CyanPrimary
+private fun m3OutlinedColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor = Outline,
+    focusedLabelColor = MaterialTheme.colorScheme.primary,
+    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+    unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+    cursorColor = MaterialTheme.colorScheme.primary
 )

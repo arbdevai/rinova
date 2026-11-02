@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Rinova Professional Vector & Mipmap Generator
-Tema: Technician Shield + Wireless Debugging Signal + Precision Diagnostic Core
-Palet: Electric Cyan (#00E5FF), Deep Teal (#00838F), Dark Slate (#0B0F14), White (#FFFFFF)
+Rinova Pure Vector-Equivalent Mipmap Rasterizer
+Tema: Jeruk Orange X Dark Charcoal (Smartphone Diagnostic Hardware Scanner)
+100% Pure Mathematical Vector Rendering, Zero Bitmap Collages.
 """
 
 import os
@@ -42,7 +42,7 @@ def create_png(width, height, draw_func):
 
     return png_header + ihdr + idat + iend
 
-def rinova_icon_painter(is_round=False):
+def rinova_painter(is_round=False):
     def painter(x, y, w, h):
         cx, cy = w / 2.0, h / 2.0
         r_max = w / 2.0
@@ -54,7 +54,7 @@ def rinova_icon_painter(is_round=False):
 
         # Masking shape
         if is_round:
-            if dist > (r_max - 1.0):
+            if dist > (r_max - 0.5):
                 return 0, 0, 0, 0
         else:
             qx = max(0.0, abs(dx) - (cx - corner_radius))
@@ -63,186 +63,128 @@ def rinova_icon_painter(is_round=False):
             if corner_dist > corner_radius - 0.5:
                 return 0, 0, 0, 0
 
-        # Cyber dark slate gradient background
+        # Background: Matte Dark Charcoal (#14171C to #1A1F26)
         norm_y = y / float(h)
-        # Background: #0B0F14 (11, 15, 20) to #00363D (0, 54, 61)
-        bg_r = int(11 * (1.0 - norm_y * 0.4) + 0 * (norm_y * 0.4))
-        bg_g = int(15 * (1.0 - norm_y * 0.4) + 40 * (norm_y * 0.4))
-        bg_b = int(20 * (1.0 - norm_y * 0.4) + 50 * (norm_y * 0.4))
+        bg_r = int(20 * (1.0 - norm_y) + 26 * norm_y)
+        bg_g = int(23 * (1.0 - norm_y) + 31 * norm_y)
+        bg_b = int(28 * (1.0 - norm_y) + 38 * norm_y)
 
-        # Radial center glow
-        center_glow = max(0.0, 1.0 - (dist / (r_max * 0.85)))
-        bg_r = min(255, int(bg_r + 0 * center_glow))
-        bg_g = min(255, int(bg_g + 80 * center_glow))
-        bg_b = min(255, int(bg_b + 95 * center_glow))
+        # Subtle radial center elevation
+        center_glow = max(0.0, 1.0 - (dist / (r_max * 0.95)))
+        bg_r = min(255, int(bg_r + 14 * center_glow))
+        bg_g = min(255, int(bg_g + 16 * center_glow))
+        bg_b = min(255, int(bg_b + 20 * center_glow))
 
-        # Foreground Symbol Drawing (Normalized to 0..1 scale)
+        # Normalized coordinates (-1.0 to 1.0)
         nx = dx / r_max
         ny = dy / r_max
 
-        # 1. Outer Security Shield (Polygon)
-        # Shield points: top (-0.55, -0.45) -> (0, -0.6) -> (0.55, -0.45) -> (0.45, 0.25) -> (0, 0.65) -> (-0.45, 0.25)
-        # Simplified: Check distance from shield border
-        is_shield_edge = False
-        shield_top = -0.58
-        shield_bottom = 0.62
-        shield_width_at_y = 0.0
-        if shield_top <= ny <= shield_bottom:
-            if ny < 0.1:
-                # Upper wider portion
-                shield_width_at_y = 0.54 - abs(ny - 0.0) * 0.08
-            else:
-                # Lower tapering to point
-                t = (ny - 0.1) / (shield_bottom - 0.1)
-                shield_width_at_y = 0.50 * (1.0 - t * 0.95)
-            
-            border_dist = abs(abs(nx) - shield_width_at_y)
-            if border_dist < 0.05 and ny > shield_top:
-                is_shield_edge = True
-            if abs(ny - shield_top) < 0.05 and abs(nx) <= shield_width_at_y:
-                is_shield_edge = True
+        # 1. Subtle Outer Telemetry Ring (Citrus Orange Accent at radius 0.76)
+        ring_r = 0.76
+        ring_dist = abs(dist / r_max - ring_r)
+        if ring_dist < 0.02:
+            alpha = (1.0 - ring_dist / 0.02) * 0.28
+            # #FF7A00: (255, 122, 0)
+            return int(255 * alpha + bg_r * (1 - alpha)), int(122 * alpha + bg_g * (1 - alpha)), int(0 * alpha + bg_b * (1 - alpha)), 255
 
-        if is_shield_edge:
-            # Shield rim in vibrant Cyan
-            return 0, 229, 255, 255
+        # 2. Smartphone Chassis:
+        # Width: nx in [-0.34, 0.34], Height: ny in [-0.50, 0.50], Corner radius = 0.12
+        phone_w = 0.34
+        phone_h = 0.50
+        phone_cr = 0.12
+        pqx = max(0.0, abs(nx) - (phone_w - phone_cr))
+        pqy = max(0.0, abs(ny) - (phone_h - phone_cr))
+        pdist = math.sqrt(pqx * pqx + pqy * pqy)
 
-        # 2. Wireless Debugging Arcs inside shield
-        # Arc 1: radius ~0.38, angles -60 to -120 deg (upper)
-        arc_radius_1 = 0.38
-        arc_dist_1 = abs(dist / r_max - arc_radius_1)
-        if arc_dist_1 < 0.045 and ny < -0.05 and abs(nx) < 0.32:
-            return 255, 255, 255, 255  # White crisp arc
+        is_chassis_edge = False
+        is_chassis_body = False
 
-        # Arc 2: radius ~0.24
-        arc_radius_2 = 0.24
-        arc_dist_2 = abs(dist / r_max - arc_radius_2)
-        if arc_dist_2 < 0.04 and ny < 0.02 and abs(nx) < 0.20:
-            return 128, 222, 234, 255  # Cyan teal arc
+        if abs(nx) <= phone_w and abs(ny) <= phone_h:
+            if pdist <= phone_cr:
+                is_chassis_body = True
+                if pdist >= (phone_cr - 0.055) or (pqx < 0.001 and abs(abs(ny) - phone_h) < 0.055) or (pqy < 0.001 and abs(abs(nx) - phone_w) < 0.055):
+                    is_chassis_edge = True
 
-        # 3. Precision Diagnostic Lightning Core
-        # Center lightning bolt
-        # Points: (0.04, -0.05) -> (-0.08, 0.14) -> (-0.01, 0.14) -> (-0.05, 0.35) -> (0.10, 0.10) -> (0.02, 0.10)
-        in_bolt = False
-        if -0.05 <= ny <= 0.35 and -0.10 <= nx <= 0.12:
-            # Upper segment
-            if -0.05 <= ny <= 0.14:
-                expected_x = 0.04 - (ny + 0.05) * 0.6
-                if abs(nx - expected_x) < 0.045:
-                    in_bolt = True
-            # Lower segment
-            elif 0.14 < ny <= 0.35:
-                expected_x = 0.02 - (ny - 0.14) * 0.3
-                if abs(nx - expected_x) < 0.045:
-                    in_bolt = True
+        # Speaker notch (top)
+        if -0.09 <= nx <= 0.09 and -0.44 <= ny <= -0.40:
+            return 156, 163, 175, 255
 
-        if in_bolt:
-            return 255, 255, 255, 255
+        # Home bar (bottom)
+        if -0.09 <= nx <= 0.09 and 0.41 <= ny <= 0.44:
+            return 107, 114, 128, 255
+
+        # 3. Precision Diagnostic Scanner Laser (Horizontal Beam at ny ~ 0.0)
+        # Laser line: nx in [-0.54, 0.54], |ny| < 0.04
+        if abs(ny) < 0.045 and abs(nx) <= 0.54:
+            t_laser = 1.0 - (abs(ny) / 0.045)
+            # Core beam: white at center, orange glow
+            if abs(ny) < 0.018 and abs(nx) <= 0.32:
+                return 255, 255, 255, 255
+            # Orange laser beam (#FF7A00 to #FFA048)
+            lr = int(255 * t_laser + bg_r * (1 - t_laser))
+            lg = int(140 * t_laser + bg_g * (1 - t_laser))
+            lb = int(0 * t_laser + bg_b * (1 - t_laser))
+            return lr, lg, lb, 255
+
+        # 4. Diagnostic Hardware Micro-Core (Citrus Orange square at center)
+        # Core: nx in [-0.15, 0.15], ny in [-0.15, 0.15]
+        if abs(nx) <= 0.15 and abs(ny) <= 0.15:
+            # Diamond center node
+            if (abs(nx) + abs(ny)) <= 0.08:
+                return 255, 251, 235, 255  # Bright Amber White
+            return 255, 122, 0, 255  # Citrus Orange (#FF7A00)
+
+        # 5. Crosshair Reticle Brackets (Citrus Orange)
+        # Corner brackets at [±0.18 to ±0.27], [±0.18 to ±0.27]
+        is_bracket = False
+        ax = abs(nx)
+        ay = abs(ny)
+        if (0.18 <= ax <= 0.27 and 0.22 <= ay <= 0.27) or (0.22 <= ax <= 0.27 and 0.18 <= ay <= 0.27):
+            is_bracket = True
+
+        if is_bracket:
+            return 255, 160, 72, 255  # Bright Tangerine Orange (#FFA048)
+
+        # Chassis edge outline
+        if is_chassis_edge:
+            return 229, 231, 235, 255  # Crisp Silver White (#E5E7EB)
+
+        # Chassis inner body (matte dark slate)
+        if is_chassis_body:
+            return 27, 32, 40, 255
 
         return bg_r, bg_g, bg_b, 255
 
     return painter
 
-def generate_rinova_icons(res_dir):
-    res_dir = os.path.abspath(res_dir)
-    drawable_dir = os.path.join(res_dir, "drawable")
-    anydpi_dir = os.path.join(res_dir, "mipmap-anydpi-v26")
-    os.makedirs(drawable_dir, exist_ok=True)
-    os.makedirs(anydpi_dir, exist_ok=True)
+def main():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    res_dir = os.path.join(script_dir, "..", "app", "src", "main", "res")
 
-    # 1. Background Vector XML
-    bg_xml = """<?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <!-- Dark Slate Background -->
-    <path
-        android:fillColor="#0D1117"
-        android:pathData="M0,0h108v108h-108z" />
-    <!-- Cyber Radial Glow -->
-    <path
-        android:fillColor="#00363D"
-        android:pathData="M54,14 A40,40 0 1 0 54,94 A40,40 0 1 0 54,14 Z"
-        android:fillAlpha="0.45" />
-</vector>
-"""
-    with open(os.path.join(drawable_dir, "ic_launcher_background.xml"), "w") as fp:
-        fp.write(bg_xml)
+    print(f"Rasterizing Pure Vector-Equivalent Icons into: {res_dir}")
 
-    # 2. Foreground Vector XML (Technician Shield + Wireless + Lightning)
-    fg_xml = """<?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <group
-        android:scaleX="0.84"
-        android:scaleY="0.84"
-        android:translateX="8.64"
-        android:translateY="8.64">
-        <!-- Security Shield Outline (Electric Cyan) -->
-        <path
-            android:fillColor="#00000000"
-            android:strokeColor="#00E5FF"
-            android:strokeWidth="4.5"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round"
-            android:pathData="M 54,22 L 78,32 C 78,60 54,82 54,86 C 54,82 30,60 30,32 Z" />
-        <!-- Wireless Debugging Arc 1 (Crisp White) -->
-        <path
-            android:fillColor="#00000000"
-            android:strokeColor="#FFFFFF"
-            android:strokeWidth="4"
-            android:strokeLineCap="round"
-            android:pathData="M 38,46 A 20,20 0 0 1 70,46" />
-        <!-- Wireless Debugging Arc 2 (Cyan Glow) -->
-        <path
-            android:fillColor="#00000000"
-            android:strokeColor="#80DEEA"
-            android:strokeWidth="3.5"
-            android:strokeLineCap="round"
-            android:pathData="M 44,53 A 12,12 0 0 1 64,53" />
-        <!-- Diagnostic Lightning Pulse (Solid White) -->
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M 56,48 L 47,63 L 53,63 L 49,76 L 62,59 L 55,59 Z" />
-    </group>
-</vector>
-"""
-    with open(os.path.join(drawable_dir, "ic_launcher_foreground.xml"), "w") as fp:
-        fp.write(fg_xml)
+    # Output Playstore 512x512
+    playstore_png = create_png(512, 512, rinova_painter(is_round=False))
+    with open(os.path.join(res_dir, "playstore-icon.png"), "wb") as f:
+        f.write(playstore_png)
+    print("  ✓ Playstore 512x512 px")
 
-    # 3. Adaptive XMLs
-    adaptive_xml = """<?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@drawable/ic_launcher_background" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
-</adaptive-icon>
-"""
-    with open(os.path.join(anydpi_dir, "ic_launcher.xml"), "w") as fp:
-        fp.write(adaptive_xml)
-    with open(os.path.join(anydpi_dir, "ic_launcher_round.xml"), "w") as fp:
-        fp.write(adaptive_xml)
+    # Generate Mipmap densities
+    for folder, size in DENSITIES.items():
+        out_folder = os.path.join(res_dir, folder)
+        os.makedirs(out_folder, exist_ok=True)
 
-    # 4. Generate Raster PNGs for all densities
-    painter_sq = rinova_icon_painter(is_round=False)
-    painter_rd = rinova_icon_painter(is_round=True)
+        std_png = create_png(size, size, rinova_painter(is_round=False))
+        with open(os.path.join(out_folder, "ic_launcher.png"), "wb") as f:
+            f.write(std_png)
 
-    for folder_name, size in DENSITIES.items():
-        folder_path = os.path.join(res_dir, folder_name)
-        os.makedirs(folder_path, exist_ok=True)
+        round_png = create_png(size, size, rinova_painter(is_round=True))
+        with open(os.path.join(out_folder, "ic_launcher_round.png"), "wb") as f:
+            f.write(round_png)
 
-        png_sq = create_png(size, size, painter_sq)
-        with open(os.path.join(folder_path, "ic_launcher.png"), "wb") as fp:
-            fp.write(png_sq)
+        print(f"  ✓ {folder}: {size}x{size} px (standard & round)")
 
-        png_rd = create_png(size, size, painter_rd)
-        with open(os.path.join(folder_path, "ic_launcher_round.png"), "wb") as fp:
-            fp.write(png_rd)
-
-    print(f"Ikon profesional Rinova berhasil dibuat di: {res_dir}")
+    print("Raster generation complete!")
 
 if __name__ == "__main__":
-    generate_rinova_icons("app/src/main/res")
+    main()
