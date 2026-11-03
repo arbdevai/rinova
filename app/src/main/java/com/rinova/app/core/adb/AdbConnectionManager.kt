@@ -61,7 +61,7 @@ internal class TlsAdbSession(private val connection: AdbConnection) : RinovaAdbS
                 baos.toString(Charsets.UTF_8.name())
             } ?: throw IOException("Perintah ADB '$command' melebihi batas waktu (${timeoutMs}ms)")
 
-            AdbShellResponse(output = output, error = "", exitCode = 0)
+            AdbShellResponse(output = output, errorOutput = "", exitCode = 0)
         } finally {
             try { stream.close() } catch (_: Exception) {}
         }
