@@ -65,15 +65,20 @@ import com.rinova.app.core.health.HealthScanResult
 import com.rinova.app.core.health.HealthSeverity
 import com.rinova.app.data.repository.SettingsRepository
 import com.rinova.app.ui.components.HealthIssueCard
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CompareArrows
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material3.CircularProgressIndicator
 import com.rinova.app.ui.components.RinovaBentoStat
 import com.rinova.app.ui.components.RinovaSurfaceCard
 import com.rinova.app.ui.components.RinovaTactileButton
+import com.rinova.app.ui.components.RinovaTerminalConsoleView
+import com.rinova.app.ui.theme.CyanPrimary
 import com.rinova.app.ui.theme.Primary
 import com.rinova.app.ui.theme.PrimaryContainer
 import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
+import com.rinova.app.ui.theme.StatusWarning
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -103,6 +108,8 @@ fun DashboardScreen(
     var isScanningHealth by remember { mutableStateOf(false) }
     var healthScanResult by remember { mutableStateOf<HealthScanResult?>(null) }
     var scanStepText by remember { mutableStateOf("") }
+    var healthScanLogs by remember { mutableStateOf<List<String>>(emptyList()) }
+    var showTerminalLogs by remember { mutableStateOf(false) }
 
     if (onConfirmAction != null) {
         CustomActionDialog(
@@ -376,39 +383,25 @@ fun DashboardScreen(
                 }
 
                 if (isScanningHealth) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF14171E))
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(28.dp),
-                            color = Primary,
-                            strokeWidth = 3.dp
-                        )
-                        Text(
-                            text = scanStepText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Primary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    RinovaTerminalConsoleView(
+                        title = "Rinova Health Audit Terminal",
+                        logs = healthScanLogs,
+                        isRunning = isScanningHealth,
+                        currentStepText = scanStepText,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 } else {
                     RinovaTactileButton(
                         text = if (healthScanResult == null) "Periksa Kesehatan HP (1-Klik)" else "Pindai Ulang Kesehatan HP",
                         onClick = {
                             coroutineScope.launch {
                                 isScanningHealth = true
-                                scanStepText = "Memeriksa kapasitas memori & cache galeri..."
-                                delay(350)
-                                scanStepText = "Mendeteksi adware sponsor pabrikan..."
-                                delay(350)
-                                scanStepText = "Mengecek RAM Plus & throttler sistem..."
-                                val res = healthEngine.runSmartHealthAudit(device)
+                                healthScanLogs = emptyList()
+                                scanStepText = "Memulai audit telemetri sistem..."
+                                val res = healthEngine.runSmartHealthAudit(device) { logLine ->
+                                    healthScanLogs = healthScanLogs + logLine
+                                    scanStepText = logLine
+                                }
                                 healthScanResult = res
                                 isScanningHealth = false
                             }
@@ -418,9 +411,44 @@ fun DashboardScreen(
                     )
                 }
 
-                // Daftar Kartu Masalah Temuan Dokter HP
+                // Komparasi Sebelum & Sesudah + Masalah Temuan Dokter HP
                 if (healthScanResult != null && !isScanningHealth) {
                     val result = healthScanResult!!
+
+                    // Kartu Sebelum vs Sesudah
+                    HealthBeforeAfterComparisonCard(
+                        result = result,
+                        isProMode = isProMode
+                    )
+
+                    // Tombol Toggle Log Terminal Audit
+                    if (healthScanLogs.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            androidx.compose.material3.TextButton(
+                                onClick = { showTerminalLogs = !showTerminalLogs }
+                            ) {
+                                Text(
+                                    text = if (showTerminalLogs) "Sembunyikan Terminal Audit" else "Tampilkan Terminal Audit (${healthScanLogs.size} baris)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Primary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        if (showTerminalLogs) {
+                            RinovaTerminalConsoleView(
+                                title = "Rinova Health Audit Terminal (Arsip Eksekusi)",
+                                logs = healthScanLogs,
+                                isRunning = false,
+                                currentStepText = "Audit selesai.",
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                     if (result.issues.isEmpty()) {
                         Row(
                             modifier = Modifier
@@ -821,5 +849,143 @@ private fun FeatureRowCard(
                 modifier = Modifier.size(18.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun HealthBeforeAfterComparisonCard(
+    result: HealthScanResult,
+    isProMode: Boolean,
+    modifier: Modifier = Modifier
+) {
+    RinovaSurfaceCard(
+        modifier = modifier.fillMaxWidth(),
+        shapeRadius = 16.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CompareArrows,
+                        contentDescription = null,
+                        tint = CyanPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Kondisi Sebelum vs Target Optimal",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (result.currentScore >= 90) StatusSafe.copy(alpha = 0.15f) else StatusCritical.copy(alpha = 0.15f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "Skor: ${result.currentScore}/100",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (result.currentScore >= 90) StatusSafe else StatusCritical
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                BeforeAfterMetricColumn(
+                    title = "Sebelum Optimasi",
+                    score = "${result.initialScore}/100",
+                    cache = result.initialCacheEstimate,
+                    adware = "${result.initialAdwareCount} terdeteksi",
+                    ram = result.initialRamStatus,
+                    isBefore = true,
+                    modifier = Modifier.weight(1f)
+                )
+
+                BeforeAfterMetricColumn(
+                    title = "Target Bersih & Cepat",
+                    score = "${result.targetOptimalScore}/100",
+                    cache = "0 B (Bersih)",
+                    adware = "0 Aman",
+                    ram = result.targetRamStatus,
+                    isBefore = false,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BeforeAfterMetricColumn(
+    title: String,
+    score: String,
+    cache: String,
+    adware: String,
+    ram: String,
+    isBefore: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val bgColor = if (isBefore) Color(0xFF191D26) else Color(0xFF102422)
+    val borderColor = if (isBefore) Color(0xFF2B3240) else StatusSafe.copy(alpha = 0.35f)
+    val accentColor = if (isBefore) StatusCritical else StatusSafe
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .padding(12.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                color = accentColor,
+                fontWeight = FontWeight.Bold
+            )
+            MetricLine(label = "Skor", value = score)
+            MetricLine(label = "Cache", value = cache)
+            MetricLine(label = "Adware", value = adware)
+            MetricLine(label = "RAM", value = ram)
+        }
+    }
+}
+
+@Composable
+private fun MetricLine(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 11.sp
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 11.sp
+        )
     }
 }

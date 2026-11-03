@@ -49,6 +49,7 @@ import com.rinova.app.ui.components.AlertType
 import com.rinova.app.ui.components.CustomActionDialog
 import com.rinova.app.ui.components.RinovaSurfaceCard
 import com.rinova.app.ui.components.RinovaTactileButton
+import com.rinova.app.ui.components.RinovaTerminalConsoleView
 import com.rinova.app.ui.components.ScanningProgressSheet
 import com.rinova.app.ui.components.SkeletonListItem
 import com.rinova.app.ui.theme.Primary
@@ -64,6 +65,7 @@ fun StorageScreen(
     modifier: Modifier = Modifier
 ) {
     val storageState by storageRepository.storageState.collectAsStateWithLifecycle()
+    val scanLogs by storageRepository.scanLogs.collectAsStateWithLifecycle()
     var progressVal by remember { mutableFloatStateOf(0f) }
     var currentStep by remember { mutableStateOf("") }
     var showScanSheet by remember { mutableStateOf(false) }
@@ -106,13 +108,14 @@ fun StorageScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Scanning Progress Alert Sheet
-        if (showScanSheet || storageState.isAnalyzing) {
-            ScanningProgressSheet(
-                title = "Memindai Penyimpanan Mendalam",
-                currentStepText = if (storageState.currentStepText.isNotEmpty()) storageState.currentStepText else currentStep,
+        // Live Terminal Console Stream
+        if (storageState.isAnalyzing || scanLogs.isNotEmpty()) {
+            RinovaTerminalConsoleView(
+                title = "Live Storage Analysis Shell",
+                logs = scanLogs,
                 progress = if (storageState.scanProgress >= 0f) storageState.scanProgress else progressVal,
-                onCancel = { showScanSheet = false }
+                currentStepText = if (storageState.currentStepText.isNotEmpty()) storageState.currentStepText else currentStep,
+                isRunning = storageState.isAnalyzing
             )
         }
 

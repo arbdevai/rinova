@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -27,8 +29,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
@@ -41,6 +46,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +59,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -82,6 +90,7 @@ fun AiDiagnosticScreen(
     val chatMessages by aiRepository.chatMessages.collectAsStateWithLifecycle()
     val isSendingChat by aiRepository.isSendingChat.collectAsStateWithLifecycle()
     val isProMode by settingsRepository.isProMode.collectAsStateWithLifecycle(false)
+    val currentModel by settingsRepository.geminiModel.collectAsStateWithLifecycle("gemini-2.0-flash")
 
     var inputPrompt by remember { mutableStateOf("") }
     var showSettingsDialog by remember { mutableStateOf(false) }
@@ -154,12 +163,29 @@ fun AiDiagnosticScreen(
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
-                        Text(
-                            text = "Konsultan Pintar Optimasi Android • Gemini AI",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF9CA3AF),
-                            fontSize = 11.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable { showSettingsDialog = true }
+                                .padding(vertical = 1.dp)
+                        ) {
+                            Text(
+                                text = "Model: $currentModel",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Primary,
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = "Ganti Model",
+                                tint = Primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
 
@@ -248,6 +274,24 @@ fun AiDiagnosticScreen(
                             color = Color(0xFF9CA3AF),
                             fontSize = 12.sp
                         )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF381B1B))
+                                .border(1.dp, Color(0xFF8B2525), RoundedCornerShape(8.dp))
+                                .clickable {
+                                    aiRepository.cancelChat()
+                                }
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "Hentikan",
+                                color = Color(0xFFFCA5A5),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -363,6 +407,7 @@ private fun ChatBubbleItem(
     onExecuteAction: (AiChatAction) -> Unit
 ) {
     val isUser = message.sender == MessageSender.USER
+    val clipboardManager = LocalClipboardManager.current
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -370,7 +415,8 @@ private fun ChatBubbleItem(
     ) {
         Box(
             modifier = Modifier
-                .widthIn(max = 310.dp)
+                .widthIn(max = if (isUser) 320.dp else 460.dp)
+                .fillMaxWidth(if (isUser) 0.82f else 0.95f)
                 .clip(
                     RoundedCornerShape(
                         topStart = 16.dp,
@@ -379,7 +425,7 @@ private fun ChatBubbleItem(
                         bottomEnd = if (isUser) 4.dp else 16.dp
                     )
                 )
-                .background(if (isUser) Primary else Color(0xFF1B1E26))
+                .background(if (isUser) Primary else Color(0xFF161922))
                 .border(
                     0.8.dp,
                     if (isUser) Primary else OutlineVariant,
@@ -392,13 +438,23 @@ private fun ChatBubbleItem(
                 )
                 .padding(14.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = message.text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isUser) Color.Black else Color.White,
-                    lineHeight = 20.sp
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (isUser) {
+                    Text(
+                        text = message.text,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Black,
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 20.sp
+                    )
+                } else {
+                    FormattedAiMessageContent(
+                        text = message.text,
+                        onCopyCode = { code ->
+                            clipboardManager.setText(AnnotatedString(code))
+                        }
+                    )
+                }
 
                 // Interactive Action Cards inside bubble
                 if (message.actions.isNotEmpty()) {
@@ -415,6 +471,146 @@ private fun ChatBubbleItem(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FormattedAiMessageContent(
+    text: String,
+    onCopyCode: (String) -> Unit
+) {
+    // Parser untuk mendeteksi blok kode ```language ... ``` atau heredoc
+    val codeBlockRegex = Regex("""```([a-zA-Z0-9_-]*)\n([\s\S]*?)```""")
+    val matches = codeBlockRegex.findAll(text).toList()
+
+    if (matches.isEmpty()) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White,
+            lineHeight = 21.sp
+        )
+    } else {
+        var lastIdx = 0
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            for (match in matches) {
+                val start = match.range.first
+                val end = match.range.last + 1
+                if (start > lastIdx) {
+                    val normalText = text.substring(lastIdx, start).trim()
+                    if (normalText.isNotEmpty()) {
+                        Text(
+                            text = normalText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White,
+                            lineHeight = 21.sp
+                        )
+                    }
+                }
+
+                val language = match.groupValues[1].ifEmpty { "HEREDOC / CODE" }.uppercase()
+                val codeContent = match.groupValues[2].trimEnd()
+
+                HeredocCodeBlockCard(
+                    language = language,
+                    code = codeContent,
+                    onCopy = { onCopyCode(codeContent) }
+                )
+
+                lastIdx = end
+            }
+
+            if (lastIdx < text.length) {
+                val remainingText = text.substring(lastIdx).trim()
+                if (remainingText.isNotEmpty()) {
+                    Text(
+                        text = remainingText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White,
+                        lineHeight = 21.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeredocCodeBlockCard(
+    language: String,
+    code: String,
+    onCopy: () -> Unit
+) {
+    var copied by remember { mutableStateOf(false) }
+
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = Color(0xFF090B0E),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, Color(0xFF262C38), RoundedCornerShape(10.dp))
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Header bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF141720))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = language,
+                    color = Primary,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xFF1F2430))
+                        .clickable {
+                            onCopy()
+                            copied = true
+                        }
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = if (copied) Icons.Default.Check else Icons.Default.ContentCopy,
+                        contentDescription = "Salin",
+                        tint = if (copied) StatusSafe else Color(0xFFD1D5DB),
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Text(
+                        text = if (copied) "Disalin" else "Salin Kode",
+                        color = if (copied) StatusSafe else Color(0xFFD1D5DB),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            // Scrollable Code Content (Heredoc / HTML / Scripts)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(10.dp)
+            ) {
+                Text(
+                    text = code,
+                    color = Color(0xFFA7F3D0),
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    lineHeight = 17.sp
+                )
             }
         }
     }

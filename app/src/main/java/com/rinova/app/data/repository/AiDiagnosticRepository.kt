@@ -49,6 +49,27 @@ class AiDiagnosticRepository(
     private val _isSendingChat = MutableStateFlow(false)
     val isSendingChat: StateFlow<Boolean> = _isSendingChat.asStateFlow()
 
+    private var currentChatJob: kotlinx.coroutines.Job? = null
+
+    fun cancelChat() {
+        currentChatJob?.cancel()
+        currentChatJob = null
+        _isSendingChat.value = false
+        val stopMsg = ChatMessage(
+            sender = MessageSender.AI,
+            text = "Analisis dihentikan oleh pengguna."
+        )
+        _chatMessages.value = _chatMessages.value + stopMsg
+    }
+
+    suspend fun loadModels(apiKey: String): Result<List<GeminiModelInfo>> = withContext(Dispatchers.IO) {
+        val res = geminiClient.fetchAvailableModels(apiKey)
+        res.onSuccess { models ->
+            _availableModels.value = models
+        }
+        res
+    }
+
     fun initChatSessionIfNeeded(device: DeviceInfo?) {
         if (_chatMessages.value.isEmpty()) {
             val resolvedDevice = device ?: (adbManager.connectionState.value as? AdbConnectionState.Connected)?.device
@@ -82,6 +103,7 @@ class AiDiagnosticRepository(
         _chatMessages.value = _chatMessages.value + userMsg
 
         _isSendingChat.value = true
+        currentChatJob = coroutineContext[kotlinx.coroutines.Job]
 
         try {
             // 2. Kumpulkan telemetri riil dari perangkat target
@@ -166,10 +188,25 @@ class AiDiagnosticRepository(
 
             _chatMessages.value = _chatMessages.value + aiMsg
             Result.success(aiMsg)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Analisis dihentikan sengaja oleh pengguna
+            throw e
         } catch (e: Exception) {
+            val isQuotaError = e.message?.contains("429") == true || e.message?.contains("Quota") == true || e.message?.contains("RESOURCE_EXHAUSTED") == true
+            val errMsgText = if (isQuotaError) {
+                "⚠️ Limit Kuota Tercapai (HTTP 429): Model '$modelName' sedang mencapai batas pemanggilan gratis Google AI Studio.\n\nSolusi: Beralihlah ke model alternatif (seperti 'gemini-1.5-flash' atau 'gemini-2.5-flash') menggunakan menu pemilih model di bagian atas layar."
+            } else {
+                "⚠️ Gagal mendapatkan respons dari Gemini: ${e.localizedMessage ?: "Koneksi terputus"}.\n\nTips: Anda dapat menekan tombol Hentikan jika proses berlangsung terlalu lama atau coba kirim ulang."
+            }
+            val errBubble = ChatMessage(
+                sender = MessageSender.AI,
+                text = errMsgText
+            )
+            _chatMessages.value = _chatMessages.value + errBubble
             Result.failure(e)
         } finally {
             _isSendingChat.value = false
+            currentChatJob = null
         }
     }
 

@@ -47,6 +47,7 @@ import com.rinova.app.ui.components.AlertType
 import com.rinova.app.ui.components.CustomActionDialog
 import com.rinova.app.ui.components.RinovaSurfaceCard
 import com.rinova.app.ui.components.RinovaTactileButton
+import com.rinova.app.ui.components.RinovaTerminalConsoleView
 import com.rinova.app.ui.components.ScanningProgressSheet
 import com.rinova.app.ui.components.SkeletonListItem
 import com.rinova.app.ui.theme.Primary
@@ -63,6 +64,7 @@ fun AdwareHunterScreen(
     val threats by adwareHunterRepository.scannedThreats.collectAsStateWithLifecycle()
     val isScanning by adwareHunterRepository.isScanning.collectAsStateWithLifecycle()
     val scanProgress by adwareHunterRepository.scanProgress.collectAsStateWithLifecycle()
+    val scanLogs by adwareHunterRepository.scanLogs.collectAsStateWithLifecycle()
     val currentStep by adwareHunterRepository.currentScanningStep.collectAsStateWithLifecycle()
 
     var capturedWindowPkg by remember { mutableStateOf<String?>(null) }
@@ -116,12 +118,13 @@ fun AdwareHunterScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        if (isScanning) {
-            ScanningProgressSheet(
-                title = "Memindai Izin & Malware Tersembunyi",
-                currentStepText = currentStep,
+        if (isScanning || scanLogs.isNotEmpty()) {
+            RinovaTerminalConsoleView(
+                title = "Live Security Scanner Shell",
+                logs = scanLogs,
                 progress = scanProgress,
-                onCancel = {}
+                currentStepText = currentStep,
+                isRunning = isScanning
             )
         }
 

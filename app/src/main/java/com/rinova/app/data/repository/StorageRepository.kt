@@ -15,10 +15,18 @@ class StorageRepository(
     private val _storageState = MutableStateFlow(StorageBreakdown())
     val storageState: StateFlow<StorageBreakdown> = _storageState.asStateFlow()
 
+    private val _scanLogs = MutableStateFlow<List<String>>(emptyList())
+    val scanLogs: StateFlow<List<String>> = _scanLogs.asStateFlow()
+
+    private fun log(line: String) {
+        _scanLogs.value = _scanLogs.value + line
+    }
+
     suspend fun analyzeStorage(
         onProgressUpdate: (step: String, percent: Float) -> Unit = { _, _ -> }
     ): Result<StorageBreakdown> = withContext(Dispatchers.IO) {
         try {
+            _scanLogs.value = emptyList()
             _storageState.value = _storageState.value.copy(
                 isAnalyzing = true,
                 scanProgress = 0.08f,
@@ -27,6 +35,7 @@ class StorageRepository(
             onProgressUpdate("Membaca kapasitas dan partisi penyimpanan...", 0.08f)
 
             // 1. Baca df -k /data
+            log("> adb shell df -k /data")
             val dfResp = adbManager.execute("df -k /data", 5000)
             var totalBytes = 0L
             var usedBytes = 0L
@@ -46,6 +55,7 @@ class StorageRepository(
                     }
                 }
             }
+            log("[OK] Partisi /data: Total ${(totalBytes / (1024*1024*1024))}GB | Bebas ${(freeBytes / (1024*1024*1024))}GB")
 
             // 2. Analisis App Cache via dumpsys diskstats
             _storageState.value = _storageState.value.copy(
@@ -53,6 +63,7 @@ class StorageRepository(
                 currentStepText = "Menganalisis statistik partisi data & cache aplikasi..."
             )
             onProgressUpdate("Menganalisis statistik partisi data & cache aplikasi...", 0.25f)
+            log("> adb shell dumpsys diskstats")
 
             var appCacheBytes = 0L
             val diskStatsResp = adbManager.execute("dumpsys diskstats", 5000)
@@ -65,6 +76,7 @@ class StorageRepository(
                     }
                 }
             }
+            log("[OK] Akumulasi App Cache terdeteksi: ${(appCacheBytes / (1024*1024))} MB")
 
             // 3. Scan folder di /sdcard/Android/data dan obb
             _storageState.value = _storageState.value.copy(
@@ -72,6 +84,7 @@ class StorageRepository(
                 currentStepText = "Mencocokkan daftar aplikasi terpasang di sistem..."
             )
             onProgressUpdate("Mencocokkan daftar aplikasi terpasang di sistem...", 0.40f)
+            log("> adb shell pm list packages")
 
             val installedPackages = mutableSetOf<String>()
             val pkgListResp = adbManager.execute("pm list packages", 10000)
@@ -81,11 +94,13 @@ class StorageRepository(
                     if (pkg.isNotEmpty()) installedPackages.add(pkg)
                 }
             }
+            log("[OK] Ditemukan ${installedPackages.size} aplikasi terpasang di sistem")
 
             val orphanedList = mutableListOf<OrphanedDirectory>()
             var orphanedTotalBytes = 0L
 
             suspend fun inspectFolders(basePath: String, startProg: Float, endProg: Float) {
+                log("> adb shell ls -1 $basePath")
                 val listResp = adbManager.execute("ls -1 $basePath", 5000)
                 val rawFolders = listResp.getOrNull()?.output?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
                 val candidateFolders = rawFolders.filter { folder ->
@@ -101,7 +116,8 @@ class StorageRepository(
                 }
 
                 if (candidateFolders.isEmpty()) {
-                    val step = "Memeriksa $basePath: Tidak ada folder yatim."
+                    val step = "Memeriksa $basePath: Bersih."
+                    log("[OK] $basePath: Tidak ada folder sisa/yatim.")
                     _storageState.value = _storageState.value.copy(currentStepText = step, scanProgress = endProg)
                     onProgressUpdate(step, endProg)
                     return
@@ -115,13 +131,13 @@ class StorageRepository(
                     onProgressUpdate(step, prog)
 
                     val fullPath = "$basePath/$folder"
-                    // Timeout 3 detik agar tidak macet di Scoped Storage
                     val duResp = adbManager.execute("du -sk \"$fullPath\" 2>/dev/null", 3000)
                     val duOut = duResp.getOrNull()?.output?.trim().orEmpty()
                     val kb = duOut.split("\\s+".toRegex()).firstOrNull()?.toLongOrNull() ?: 0L
                     if (kb > 1024L) { // Hanya catat jika > 1 MB
                         val bytes = kb * 1024L
                         orphanedTotalBytes += bytes
+                        log("[WARN] Folder yatim: $folder (${(kb/1024)} MB)")
                         orphanedList.add(
                             OrphanedDirectory(
                                 path = fullPath,
@@ -143,6 +159,7 @@ class StorageRepository(
                 currentStepText = "Memindai file crash dump sistem (tombstones & ANR)..."
             )
             onProgressUpdate("Memindai file crash dump sistem (tombstones & ANR)...", 0.85f)
+            log("> adb shell du -sk /data/tombstones /data/anr")
 
             var crashDumpsBytes = 0L
             val tombResp = adbManager.execute("du -sk /data/tombstones 2>/dev/null", 3000)
@@ -155,7 +172,9 @@ class StorageRepository(
                 val kb = out.trim().split("\\s+".toRegex()).firstOrNull()?.toLongOrNull() ?: 0L
                 crashDumpsBytes += (kb * 1024L)
             }
+            log("[OK] Crash dumps sistem: ${(crashDumpsBytes / 1024)} KB")
 
+            log("[DONE] Analisis penyimpanan selesai.")
             onProgressUpdate("Analisis penyimpanan selesai.", 1.0f)
             val resultBreakdown = StorageBreakdown(
                 totalBytes = totalBytes,

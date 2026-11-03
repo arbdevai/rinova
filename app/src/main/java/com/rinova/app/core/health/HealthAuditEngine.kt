@@ -9,7 +9,10 @@ class HealthAuditEngine(
     private val adbRepository: AdbRepository
 ) {
 
-    suspend fun runSmartHealthAudit(device: DeviceInfo): HealthScanResult = withContext(Dispatchers.IO) {
+    suspend fun runSmartHealthAudit(
+        device: DeviceInfo,
+        onLog: (String) -> Unit = {}
+    ): HealthScanResult = withContext(Dispatchers.IO) {
         val issues = mutableListOf<HealthIssue>()
         var safeCount = 0
 
@@ -18,7 +21,11 @@ class HealthAuditEngine(
         val isXiaomi = brandLower.contains("xiaomi") || brandLower.contains("redmi") || brandLower.contains("poco")
         val isSamsung = brandLower.contains("samsung") || manufacturerLower.contains("samsung")
 
+        onLog("> Rinova Health Diagnostics Engine diinisialisasi...")
+        onLog("[INFO] Target: ${device.brand} ${device.model} (Android ${device.androidVersion}, SDK ${device.sdkInt})")
+
         // 1. Audit Penyimpanan (Storage Cache & Partition Health)
+        onLog("> adb shell df -k /data")
         val dfResult = adbRepository.executeCommand("df -k /data").getOrNull()?.output.orEmpty()
         var dataUsagePercent = 0
         dfResult.lines().forEach { line ->
@@ -28,6 +35,7 @@ class HealthAuditEngine(
                 dataUsagePercent = pStr.toIntOrNull() ?: 0
             }
         }
+        onLog("[OK] Partisi /data terpakai: $dataUsagePercent%")
 
         if (dataUsagePercent > 85) {
             issues.add(
@@ -73,11 +81,13 @@ class HealthAuditEngine(
         }
 
         // 2. Audit Adware & Bloatware Pabrikan
+        onLog("> adb shell pm list packages")
         val installedPackagesRaw = adbRepository.executeCommand("pm list packages").getOrNull()?.output.orEmpty()
         val installedPackages = installedPackagesRaw.lines()
             .map { it.substringAfter("package:").trim() }
             .filter { it.isNotEmpty() }
             .toSet()
+        onLog("[OK] Terbaca ${installedPackages.size} total paket di sistem")
 
         if (isSamsung) {
             if (installedPackages.contains("com.aura.oobe.samsung.gl")) {
@@ -220,11 +230,23 @@ class HealthAuditEngine(
             safeCount++
         }
 
-        HealthScanResult(
+        val initialAdware = issues.count { it.category == HealthCategory.ADWARE }
+        val initialCache = if (isXiaomi) "~1.5 GB" else "~800 MB"
+        val ramIssue = issues.find { it.category == HealthCategory.PERFORMANCE }
+        val initialRam = if (ramIssue != null) "Terbebani (${ramIssue.title})" else "Stabil"
+
+        onLog("[DONE] Audit kesehatan selesai. Ditemukan ${issues.size} rekomendasi optimasi.")
+
+        val res = HealthScanResult(
             totalIssuesFound = issues.size,
             safeItemsCount = safeCount,
-            issues = issues
+            issues = issues,
+            initialCacheEstimate = initialCache,
+            initialAdwareCount = initialAdware,
+            initialRamStatus = initialRam,
+            targetRamStatus = "Optimal & Responsif"
         )
+        res.copy(initialScore = res.currentScore)
     }
 
     suspend fun executeFix(issue: HealthIssue): Result<String> = withContext(Dispatchers.IO) {
