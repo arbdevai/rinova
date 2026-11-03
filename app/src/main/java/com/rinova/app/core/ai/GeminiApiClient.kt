@@ -33,6 +33,24 @@ private data class GeminiRequest(
 )
 
 @Serializable
+private data class GeminiSystemInstruction(val parts: List<GeminiPart>)
+
+@Serializable
+private data class GeminiChatContent(val role: String, val parts: List<GeminiPart>)
+
+@Serializable
+private data class GeminiChatRequest(
+    val contents: List<GeminiChatContent>,
+    val systemInstruction: GeminiSystemInstruction? = null,
+    val generationConfig: GeminiChatGenerationConfig = GeminiChatGenerationConfig()
+)
+
+@Serializable
+private data class GeminiChatGenerationConfig(
+    val temperature: Float = 0.7f
+)
+
+@Serializable
 private data class GeminiCandidate(val content: GeminiContent? = null)
 
 @Serializable
@@ -224,6 +242,60 @@ class GeminiApiClient {
                 generatedAtEpochMs = System.currentTimeMillis(),
                 modelUsed = cleanModel
             ))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun chat(
+        apiKey: String,
+        systemInstructionText: String,
+        messages: List<Pair<String, String>>,
+        modelName: String = "gemini-2.0-flash"
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val cleanKey = apiKey.trim()
+        val cleanModel = modelName.trim().removePrefix("models/")
+        if (cleanKey.isEmpty()) {
+            return@withContext Result.failure(IllegalArgumentException("Kunci API Gemini belum dimasukkan. Silakan atur di menu Pengaturan."))
+        }
+
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/$cleanModel:generateContent?key=$cleanKey"
+        val chatContents = messages.map { (role, text) ->
+            GeminiChatContent(
+                role = if (role == "user") "user" else "model",
+                parts = listOf(GeminiPart(text))
+            )
+        }
+
+        val req = GeminiChatRequest(
+            contents = chatContents,
+            systemInstruction = if (systemInstructionText.isNotEmpty()) {
+                GeminiSystemInstruction(parts = listOf(GeminiPart(systemInstructionText)))
+            } else null
+        )
+
+        val jsonPayload = json.encodeToString(GeminiChatRequest.serializer(), req)
+        val body = jsonPayload.toRequestBody("application/json; charset=utf-8".toMediaType())
+
+        val request = Request.Builder()
+            .url(url)
+            .post(body)
+            .addHeader("Accept", "application/json")
+            .build()
+
+        try {
+            val response = httpClient.newCall(request).execute()
+            val rawBody = response.body?.string().orEmpty()
+
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(parseHttpError(response.code, rawBody))
+            }
+
+            val parsedResponse = json.decodeFromString(GeminiResponse.serializer(), rawBody)
+            val text = parsedResponse.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
+                ?: return@withContext Result.failure(IOException("Respons Gemini kosong."))
+
+            Result.success(text)
         } catch (e: Exception) {
             Result.failure(e)
         }

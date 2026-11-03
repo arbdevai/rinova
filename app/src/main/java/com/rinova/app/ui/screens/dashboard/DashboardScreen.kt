@@ -57,6 +57,15 @@ import com.rinova.app.data.repository.AdbRepository
 import com.rinova.app.data.repository.StorageRepository
 import com.rinova.app.ui.components.AlertType
 import com.rinova.app.ui.components.CustomActionDialog
+import com.rinova.app.core.health.HealthAuditEngine
+import com.rinova.app.core.health.HealthCategory
+import com.rinova.app.core.health.HealthIssue
+import com.rinova.app.core.health.HealthScanResult
+import com.rinova.app.core.health.HealthSeverity
+import com.rinova.app.data.repository.SettingsRepository
+import com.rinova.app.ui.components.HealthIssueCard
+import androidx.compose.material.icons.filled.MedicalServices
+import androidx.compose.material3.CircularProgressIndicator
 import com.rinova.app.ui.components.RinovaBentoStat
 import com.rinova.app.ui.components.RinovaSurfaceCard
 import com.rinova.app.ui.components.RinovaTactileButton
@@ -64,6 +73,7 @@ import com.rinova.app.ui.theme.Primary
 import com.rinova.app.ui.theme.PrimaryContainer
 import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -71,6 +81,7 @@ fun DashboardScreen(
     connectionState: AdbConnectionState,
     adbRepository: AdbRepository,
     storageRepository: StorageRepository,
+    settingsRepository: SettingsRepository,
     updateManager: UpdateManager,
     onNavigateToStorage: () -> Unit,
     onNavigateToAdware: () -> Unit,
@@ -85,7 +96,11 @@ fun DashboardScreen(
     var onConfirmAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var actionFeedback by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
-    val updateState by updateManager.updateState.collectAsStateWithLifecycle()
+    val isProMode by settingsRepository.isProMode.collectAsStateWithLifecycle(false)
+    val healthEngine = remember(adbRepository) { HealthAuditEngine(adbRepository) }
+    var isScanningHealth by remember { mutableStateOf(false) }
+    var healthScanResult by remember { mutableStateOf<HealthScanResult?>(null) }
+    var scanStepText by remember { mutableStateOf("") }
 
     if (onConfirmAction != null) {
         CustomActionDialog(
@@ -286,6 +301,198 @@ fun DashboardScreen(
                         subValue = ramSub,
                         modifier = Modifier.weight(1f)
                     )
+                }
+            }
+        }
+
+        // 🩺 PIVOT UTAMA: 1-CLICK SMART HEALTH CHECK (DOKTER HP PINTAR)
+        RinovaSurfaceCard(
+            modifier = Modifier.fillMaxWidth(),
+            shapeRadius = 20.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(PrimaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MedicalServices,
+                                contentDescription = null,
+                                tint = Primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Dokter HP Pintar",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Pemeriksaan 1-Klik Storage, Adware, RAM & Keamanan",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+
+                    if (healthScanResult != null && !isScanningHealth) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (healthScanResult!!.totalIssuesFound > 0) StatusCritical.copy(alpha = 0.15f) else StatusSafe.copy(alpha = 0.15f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (healthScanResult!!.totalIssuesFound > 0) "${healthScanResult!!.totalIssuesFound} Masalah" else "Sehat Prima",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (healthScanResult!!.totalIssuesFound > 0) StatusCritical else StatusSafe,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+                }
+
+                if (isScanningHealth) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF14171E))
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(28.dp),
+                            color = Primary,
+                            strokeWidth = 3.dp
+                        )
+                        Text(
+                            text = scanStepText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Primary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                } else {
+                    RinovaTactileButton(
+                        text = if (healthScanResult == null) "Periksa Kesehatan HP (1-Klik)" else "Pindai Ulang Kesehatan HP",
+                        onClick = {
+                            coroutineScope.launch {
+                                isScanningHealth = true
+                                scanStepText = "Memeriksa kapasitas memori & cache galeri..."
+                                delay(350)
+                                scanStepText = "Mendeteksi adware sponsor pabrikan..."
+                                delay(350)
+                                scanStepText = "Mengecek RAM Plus & throttler sistem..."
+                                val res = healthEngine.runSmartHealthAudit(device)
+                                healthScanResult = res
+                                isScanningHealth = false
+                            }
+                        },
+                        icon = Icons.Default.MedicalServices,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                // Daftar Kartu Masalah Temuan Dokter HP
+                if (healthScanResult != null && !isScanningHealth) {
+                    val result = healthScanResult!!
+                    if (result.issues.isEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(StatusSafe.copy(alpha = 0.15f))
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = StatusSafe,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "Ponsel Dalam Kondisi Prima!",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = StatusSafe,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Tidak ditemukan cache membengkak, adware sponsor, atau pembatas performa.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    } else {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            result.issues.forEach { issue ->
+                                HealthIssueCard(
+                                    issue = issue,
+                                    isProMode = isProMode,
+                                    onFixClick = { targetIssue ->
+                                        dialogTitle = if (isProMode) "Eksekusi: ${targetIssue.title}" else "Perbaiki: ${targetIssue.title}"
+                                        dialogMessage = if (isProMode) {
+                                            "${targetIssue.humanDescription}\n\nPerintah ADB Shell:\n${targetIssue.technicalCommand}"
+                                        } else {
+                                            "${targetIssue.humanDescription}\n\n100% aman, tidak akan menghapus foto atau data pribadi Anda."
+                                        }
+                                        dialogCommand = if (isProMode) targetIssue.technicalCommand else null
+                                        dialogAlertType = when (targetIssue.severity) {
+                                            HealthSeverity.CRITICAL -> AlertType.CRITICAL
+                                            HealthSeverity.WARNING -> AlertType.WARNING
+                                            else -> AlertType.INFO
+                                        }
+                                        onConfirmAction = {
+                                            coroutineScope.launch {
+                                                val fixRes = healthEngine.executeFix(targetIssue)
+                                                fixRes.fold(
+                                                    onSuccess = {
+                                                        actionFeedback = "Perbaikan '${targetIssue.title}' berhasil diterapkan!"
+                                                        val updatedList = healthScanResult?.issues?.map {
+                                                            if (it.id == targetIssue.id) it.copy(isResolved = true) else it
+                                                        } ?: emptyList()
+                                                        healthScanResult = healthScanResult?.copy(issues = updatedList)
+                                                    },
+                                                    onFailure = {
+                                                        actionFeedback = "Gagal memperbaiki: ${it.localizedMessage}"
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

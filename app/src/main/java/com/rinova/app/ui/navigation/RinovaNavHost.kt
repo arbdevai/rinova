@@ -55,6 +55,7 @@ import com.rinova.app.BuildConfig
 import com.rinova.app.core.di.RinovaContainer
 import com.rinova.app.core.model.AdbConnectionState
 import com.rinova.app.core.update.UpdateState
+import com.rinova.app.ui.components.RinovaSettingsDialog
 import com.rinova.app.ui.components.AlertType
 import com.rinova.app.ui.components.AppTopBar
 import com.rinova.app.ui.components.CustomActionDialog
@@ -89,10 +90,12 @@ fun RinovaMainScreen(
     var showDisconnectConfirm by remember { mutableStateOf(false) }
     var showUpdateDialog by remember { mutableStateOf(false) }
     var showLogSheet by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
     val connectionState by container.adbRepository.connectionState.collectAsStateWithLifecycle()
     val updateState by container.updateManager.updateState.collectAsStateWithLifecycle()
+    val isProMode by container.settingsRepository.isProMode.collectAsStateWithLifecycle(false)
     val isConnected = connectionState is AdbConnectionState.Connected
 
     // Auto-check In-App Update saat aplikasi dibuka sesuai standar industri skill Android Compose
@@ -143,11 +146,26 @@ fun RinovaMainScreen(
         )
     }
 
+    // Modal Pengaturan BYOK
+    if (showSettingsDialog) {
+        RinovaSettingsDialog(
+            settingsRepository = container.settingsRepository,
+            onDismiss = { showSettingsDialog = false }
+        )
+    }
+
     Scaffold(
         topBar = {
             AppTopBar(
                 connectionState = connectionState,
                 updateState = updateState,
+                isProMode = isProMode,
+                onToggleProMode = {
+                    coroutineScope.launch {
+                        container.settingsRepository.setProMode(!isProMode)
+                    }
+                },
+                onSettingsClick = { showSettingsDialog = true },
                 onUpdateClick = { showUpdateDialog = true },
                 onCheckUpdateManual = {
                     coroutineScope.launch {
@@ -220,6 +238,7 @@ fun RinovaMainScreen(
                             connectionState = connectionState,
                             adbRepository = container.adbRepository,
                             storageRepository = container.storageRepository,
+                            settingsRepository = container.settingsRepository,
                             updateManager = container.updateManager,
                             onNavigateToStorage = { currentTab = RinovaWorkspaceTab.STORAGE },
                             onNavigateToAdware = { currentTab = RinovaWorkspaceTab.KEAMANAN },

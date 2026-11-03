@@ -42,9 +42,13 @@ internal class TlsAdbSession(private val connection: AdbConnection) : RinovaAdbS
 
     override suspend fun exec(command: String, timeoutMs: Long): AdbShellResponse = withContext(Dispatchers.IO) {
         val stream = try {
-            connection.open("exec:$command")
+            connection.open("shell,v2,raw:$command\n")
         } catch (_: Exception) {
-            connection.open("shell:$command\n")
+            try {
+                connection.open("shell:$command\n")
+            } catch (_: Exception) {
+                connection.open("exec:$command")
+            }
         }
 
         try {
@@ -53,10 +57,18 @@ internal class TlsAdbSession(private val connection: AdbConnection) : RinovaAdbS
                 val buffer = ByteArray(8192)
                 val baos = ByteArrayOutputStream()
                 var readBytes: Int
-                while (true) {
-                    readBytes = input.read(buffer, 0, buffer.size)
-                    if (readBytes == -1) break
-                    baos.write(buffer, 0, readBytes)
+                try {
+                    while (true) {
+                        readBytes = input.read(buffer, 0, buffer.size)
+                        if (readBytes == -1) break
+                        baos.write(buffer, 0, readBytes)
+                    }
+                } catch (e: IOException) {
+                    if (e.message?.contains("Stream closed", ignoreCase = true) == true) {
+                        // Tanda normal bahwa adbd telah selesai mengirim output dan menutup stream (EOF)
+                    } else {
+                        throw e
+                    }
                 }
                 baos.toString(Charsets.UTF_8.name())
             } ?: throw IOException("Perintah ADB '$command' melebihi batas waktu (${timeoutMs}ms)")
@@ -321,13 +333,18 @@ class AdbConnectionManager(private val context: Context) {
     }
 
     private suspend fun fetchDeviceInfoInternal(session: RinovaAdbSession): DeviceInfo {
-        suspend fun getProp(name: String): String {
-            return try {
-                session.exec("getprop $name", 5000).output.trim()
-            } catch (_: Exception) {
-                ""
+        val propMap = mutableMapOf<String, String>()
+        try {
+            val rawProps = session.exec("getprop", 5000).output
+            val regex = Regex("""\[(.*?)\]:\s*\[(.*?)\]""")
+            regex.findAll(rawProps).forEach { m ->
+                if (m.groupValues.size >= 3) {
+                    propMap[m.groupValues[1]] = m.groupValues[2]
+                }
             }
-        }
+        } catch (_: Exception) {}
+
+        fun getProp(name: String): String = propMap[name] ?: ""
 
         val brand = getProp("ro.product.brand").ifEmpty { "Android" }
         val model = getProp("ro.product.model").ifEmpty { "Device" }

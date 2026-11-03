@@ -1,6 +1,7 @@
 package com.rinova.app.data.repository
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -16,6 +17,7 @@ class SettingsRepository(private val context: Context) {
         private val KEY_GEMINI_MODEL = stringPreferencesKey("gemini_model")
         private val KEY_LAST_TARGET_IP = stringPreferencesKey("last_target_ip")
         private val KEY_LAST_TARGET_PORT = stringPreferencesKey("last_target_port")
+        private val KEY_IS_PRO_MODE = booleanPreferencesKey("is_pro_mode")
     }
 
     val geminiApiKey: Flow<String> = context.dataStore.data.map { preferences ->
@@ -24,6 +26,10 @@ class SettingsRepository(private val context: Context) {
 
     val geminiModel: Flow<String> = context.dataStore.data.map { preferences ->
         preferences[KEY_GEMINI_MODEL] ?: "gemini-2.0-flash"
+    }
+
+    val isProMode: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[KEY_IS_PRO_MODE] ?: false
     }
 
     val lastTargetIp: Flow<String> = context.dataStore.data.map { preferences ->
@@ -43,6 +49,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun saveGeminiModel(model: String) {
         context.dataStore.edit { preferences ->
             preferences[KEY_GEMINI_MODEL] = model.trim()
+        }
+    }
+
+    suspend fun setProMode(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[KEY_IS_PRO_MODE] = enabled
         }
     }
 

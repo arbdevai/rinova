@@ -8,7 +8,12 @@ import com.rinova.app.core.model.AiDiagnosticReport
 import com.rinova.app.core.model.AiRecommendation
 import com.rinova.app.core.model.GeminiModelInfo
 import com.rinova.app.core.model.GeminiTestResult
+import com.rinova.app.core.model.AiChatAction
+import com.rinova.app.core.model.ChatMessage
+import com.rinova.app.core.model.DeviceInfo
+import com.rinova.app.core.model.MessageSender
 import com.rinova.app.data.debloat.SafeWhitelist
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +40,154 @@ class AiDiagnosticRepository(
 
     private val _availableModels = MutableStateFlow<List<GeminiModelInfo>>(emptyList())
     val availableModels: StateFlow<List<GeminiModelInfo>> = _availableModels.asStateFlow()
+
+    private val _chatMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
+    val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
+
+    private val _isSendingChat = MutableStateFlow(false)
+    val isSendingChat: StateFlow<Boolean> = _isSendingChat.asStateFlow()
+
+    fun initChatSessionIfNeeded(device: DeviceInfo?) {
+        if (_chatMessages.value.isEmpty()) {
+            val devName = if (device != null) "${device.brand} ${device.model}" else "HP Android"
+            val androidVer = device?.androidVersion ?: "14"
+            val welcomeText = "Halo! Saya Dr. Rinova, asisten pintar optimasi Android Anda.\n\nSaya telah terhubung ke perangkat target $devName (Android $androidVer). Apa kendala atau keluhan yang sedang Anda alami? (Misalnya: HP lemot/patah-patah saat main game, memori cepat penuh, baterai boros, atau ingin mematikan iklan sistem bawaan?)"
+            _chatMessages.value = listOf(
+                ChatMessage(
+                    sender = MessageSender.AI,
+                    text = welcomeText
+                )
+            )
+        }
+    }
+
+    suspend fun sendChatMessage(
+        apiKey: String,
+        userText: String,
+        modelName: String = "gemini-2.0-flash"
+    ): Result<ChatMessage> = withContext(Dispatchers.IO) {
+        val cleanUserText = userText.trim()
+        if (cleanUserText.isEmpty()) {
+            return@withContext Result.failure(IllegalArgumentException("Pesan tidak boleh kosong"))
+        }
+
+        val connState = adbManager.connectionState.value
+        val device = if (connState is AdbConnectionState.Connected) connState.device else null
+
+        // 1. Tambahkan pesan user ke antrean chat
+        val userMsg = ChatMessage(sender = MessageSender.USER, text = cleanUserText)
+        _chatMessages.value = _chatMessages.value + userMsg
+
+        _isSendingChat.value = true
+
+        try {
+            // 2. Susun System Instruction Dr. Rinova yang kaya konteks empiris
+            val systemInstruction = buildString {
+                append("Anda adalah Dr. Rinova, konsultan dokter HP dan asisten optimasi Android yang ramah, santai, empatik, dan anti-jargon teknis.\n")
+                if (device != null) {
+                    append("Data perangkat target:\n")
+                    append("- Model: ${device.brand} ${device.model} (${device.manufacturer})\n")
+                    append("- OS: Android ${device.androidVersion} (SDK ${device.sdkInt}, Patch ${device.securityPatch})\n")
+                    append("- RAM: ${device.freeRamMb} MB bebas dari total ${device.totalRamMb} MB\n")
+                    append("- Baterai: ${device.batteryLevel}% (${if (device.isCharging) "Mengisi" else "Tidak mengisi"})\n")
+                    append("- ROM: ${device.customRomBrand} (CPU: ${device.cpuAbi})\n")
+                }
+                append("\nATURAN:\n")
+                append("1. Berbicaralah dengan bahasa Indonesia yang ramah, menenangkan, tidak kaku, dan mudah dimengerti orang awam.\n")
+                append("2. JANGAN membuat pengguna takut atau bingung dengan istilah terminal linux mentah di percakapan teks utama.\n")
+                append("3. Jika menyarankan perbaikan/tindakan (misal matikan RAM Plus, bersihkan cache galeri, matikan adware Aura/MSA, optimasi throttler), WAJIB sertakan kartu aksi terstruktur di akhir respons Anda dalam blok markdown ```action ... ``` persis seperti format JSON ini:\n")
+                append("```action\n")
+                append("{\n")
+                append("  \"title\": \"Judul Singkat Tindakan\",\n")
+                append("  \"reason\": \"Alasan jelas & menenangkan\",\n")
+                append("  \"command\": \"perintah adb valid\",\n")
+                append("  \"isSafe\": true\n")
+                append("}\n")
+                append("```\n")
+                append("Rinova akan otomatis mengubah blok ```action``` tersebut menjadi tombol aksi 1-klik di layar pengguna!")
+            }
+
+            // 3. Susun histori percakapan
+            val history = _chatMessages.value.map { msg ->
+                val role = if (msg.sender == MessageSender.USER) "user" else "model"
+                Pair(role, msg.text)
+            }
+
+            // 4. Panggil Gemini
+            val responseResult = geminiClient.chat(apiKey, systemInstruction, history, modelName)
+            if (responseResult.isFailure) {
+                return@withContext Result.failure(responseResult.exceptionOrNull() ?: IOException("Gagal memanggil Gemini"))
+            }
+
+            val rawResponse = responseResult.getOrThrow()
+
+            // 5. Ekstrak blok ```action ... ``` menjadi AiChatAction
+            val actionRegex = Regex("""```action\s*(\{.*?\})\s*```""", RegexOption.DOT_MATCHES_ALL)
+            val extractedActions = mutableListOf<AiChatAction>()
+
+            actionRegex.findAll(rawResponse).forEach { match ->
+                val jsonStr = match.groupValues[1]
+                try {
+                    val root = Json { ignoreUnknownKeys = true; isLenient = true }.parseToJsonElement(jsonStr)
+                    val obj = root as? kotlinx.serialization.json.JsonObject
+                    val title = obj?.get("title")?.toString()?.replace("\"", "").orEmpty()
+                    val reason = obj?.get("reason")?.toString()?.replace("\"", "").orEmpty()
+                    val command = obj?.get("command")?.toString()?.replace("\"", "").orEmpty()
+                    val isSafe = obj?.get("isSafe")?.toString()?.toBooleanStrictOrNull() ?: true
+
+                    if (title.isNotEmpty() && command.isNotEmpty()) {
+                        extractedActions.add(
+                            AiChatAction(
+                                title = title,
+                                reason = reason,
+                                shellCommand = command,
+                                isSafe = isSafe
+                            )
+                        )
+                    }
+                } catch (_: Exception) {}
+            }
+
+            // Bersihkan teks dari blok ```action``` agar bubble chat tetap rapi
+            val cleanBubbleText = rawResponse.replace(actionRegex, "").trim()
+
+            val aiMsg = ChatMessage(
+                sender = MessageSender.AI,
+                text = cleanBubbleText,
+                actions = extractedActions
+            )
+
+            _chatMessages.value = _chatMessages.value + aiMsg
+            Result.success(aiMsg)
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            _isSendingChat.value = false
+        }
+    }
+
+    suspend fun executeChatAction(action: AiChatAction): Result<String> = withContext(Dispatchers.IO) {
+        val cmd = action.shellCommand.trim()
+        if (cmd.isEmpty()) return@withContext Result.failure(IllegalArgumentException("Perintah tidak valid"))
+
+        val execRes = adbManager.execute(cmd)
+        execRes.fold(
+            onSuccess = { res ->
+                // Perbarui status action menjadi isExecuted = true di dalam list pesan
+                val updatedMessages = _chatMessages.value.map { msg ->
+                    val updatedActions = msg.actions.map { a ->
+                        if (a.actionId == action.actionId) a.copy(isExecuted = true) else a
+                    }
+                    msg.copy(actions = updatedActions)
+                }
+                _chatMessages.value = updatedMessages
+                Result.success(res.allOutput.ifEmpty { "Berhasil dijalankan." })
+            },
+            onFailure = { err ->
+                Result.failure(err)
+            }
+        )
+    }
 
     suspend fun fetchAvailableModels(apiKey: String): Result<List<GeminiModelInfo>> {
         val res = geminiClient.fetchAvailableModels(apiKey)

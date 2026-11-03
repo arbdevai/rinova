@@ -55,6 +55,7 @@ import com.rinova.app.ui.theme.StatusCritical
 import com.rinova.app.ui.theme.StatusSafe
 import com.rinova.app.ui.theme.StatusWarning
 
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Terminal
 
 /**
@@ -64,11 +65,15 @@ import androidx.compose.material.icons.filled.Terminal
  * - Quick Action Pill in-app update langsung dari header
  * - Tombol Konsol Log Telemetri Real-Time
  * - Live connection telemetry radar
+ * - Mode Pro / Smart Toggle & Settings BYOK Shortcut
  */
 @Composable
 fun AppTopBar(
     connectionState: AdbConnectionState,
     updateState: UpdateState = UpdateState.Idle,
+    isProMode: Boolean = false,
+    onToggleProMode: (() -> Unit)? = null,
+    onSettingsClick: (() -> Unit)? = null,
     onUpdateClick: (() -> Unit)? = null,
     onCheckUpdateManual: (() -> Unit)? = null,
     onLogClick: (() -> Unit)? = null,
@@ -296,6 +301,40 @@ fun AppTopBar(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 10.sp,
                                 letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
+
+                    // Mode Pro / Smart Capsule Toggle
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (isProMode) PrimaryContainer else Color(0xFF1E293B))
+                            .border(0.8.dp, if (isProMode) Primary else OutlineVariant, RoundedCornerShape(14.dp))
+                            .then(if (onToggleProMode != null) Modifier.clickable(onClick = onToggleProMode) else Modifier)
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isProMode) "PRO" else "SMART",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isProMode) Primary else Color(0xFF38BDF8),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp
+                        )
+                    }
+
+                    // Tombol Pengaturan BYOK
+                    if (onSettingsClick != null) {
+                        IconButton(
+                            onClick = onSettingsClick,
+                            modifier = Modifier.size(30.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Pengaturan",
+                                tint = Color(0xFF9CA3AF),
+                                modifier = Modifier.size(17.dp)
                             )
                         }
                     }
