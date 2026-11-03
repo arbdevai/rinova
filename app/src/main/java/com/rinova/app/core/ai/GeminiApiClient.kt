@@ -39,10 +39,21 @@ private data class GeminiSystemInstruction(val parts: List<GeminiPart>)
 private data class GeminiChatContent(val role: String, val parts: List<GeminiPart>)
 
 @Serializable
+private data class GeminiGoogleSearchTool(
+    val dummy: String? = null
+)
+
+@Serializable
+private data class GeminiTool(
+    val google_search: GeminiGoogleSearchTool = GeminiGoogleSearchTool()
+)
+
+@Serializable
 private data class GeminiChatRequest(
     val contents: List<GeminiChatContent>,
     val systemInstruction: GeminiSystemInstruction? = null,
-    val generationConfig: GeminiChatGenerationConfig = GeminiChatGenerationConfig()
+    val generationConfig: GeminiChatGenerationConfig = GeminiChatGenerationConfig(),
+    val tools: List<GeminiTool>? = null
 )
 
 @Serializable
@@ -251,7 +262,8 @@ class GeminiApiClient {
         apiKey: String,
         systemInstructionText: String,
         messages: List<Pair<String, String>>,
-        modelName: String = "gemini-2.0-flash"
+        modelName: String = "gemini-2.0-flash",
+        enableSearchGrounding: Boolean = true
     ): Result<String> = withContext(Dispatchers.IO) {
         val cleanKey = apiKey.trim()
         val cleanModel = modelName.trim().removePrefix("models/")
@@ -267,35 +279,44 @@ class GeminiApiClient {
             )
         }
 
-        val req = GeminiChatRequest(
-            contents = chatContents,
-            systemInstruction = if (systemInstructionText.isNotEmpty()) {
-                GeminiSystemInstruction(parts = listOf(GeminiPart(systemInstructionText)))
-            } else null
-        )
+        suspend fun executeGenerate(useTools: Boolean): Result<String> {
+            val req = GeminiChatRequest(
+                contents = chatContents,
+                systemInstruction = if (systemInstructionText.isNotEmpty()) {
+                    GeminiSystemInstruction(parts = listOf(GeminiPart(systemInstructionText)))
+                } else null,
+                tools = if (useTools) listOf(GeminiTool()) else null
+            )
 
-        val jsonPayload = json.encodeToString(GeminiChatRequest.serializer(), req)
-        val body = jsonPayload.toRequestBody("application/json; charset=utf-8".toMediaType())
+            val jsonPayload = json.encodeToString(GeminiChatRequest.serializer(), req)
+            val body = jsonPayload.toRequestBody("application/json; charset=utf-8".toMediaType())
 
-        val request = Request.Builder()
-            .url(url)
-            .post(body)
-            .addHeader("Accept", "application/json")
-            .build()
+            val request = Request.Builder()
+                .url(url)
+                .post(body)
+                .addHeader("Accept", "application/json")
+                .build()
 
-        try {
             val response = httpClient.newCall(request).execute()
             val rawBody = response.body?.string().orEmpty()
 
             if (!response.isSuccessful) {
-                return@withContext Result.failure(parseHttpError(response.code, rawBody))
+                if (response.code == 400 && useTools) {
+                    // Fallback jika model tertentu tidak mendukung google_search grounding
+                    return executeGenerate(useTools = false)
+                }
+                return Result.failure(parseHttpError(response.code, rawBody))
             }
 
             val parsedResponse = json.decodeFromString(GeminiResponse.serializer(), rawBody)
             val text = parsedResponse.candidates?.firstOrNull()?.content?.parts?.firstOrNull()?.text
-                ?: return@withContext Result.failure(IOException("Respons Gemini kosong."))
+                ?: return Result.failure(IOException("Respons Gemini kosong."))
 
-            Result.success(text)
+            return Result.success(text)
+        }
+
+        try {
+            executeGenerate(useTools = enableSearchGrounding)
         } catch (e: Exception) {
             Result.failure(e)
         }

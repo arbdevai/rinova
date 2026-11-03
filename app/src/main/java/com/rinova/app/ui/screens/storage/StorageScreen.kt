@@ -110,8 +110,8 @@ fun StorageScreen(
         if (showScanSheet || storageState.isAnalyzing) {
             ScanningProgressSheet(
                 title = "Memindai Penyimpanan Mendalam",
-                currentStepText = if (currentStep.isNotEmpty()) currentStep else storageState.currentStepText,
-                progress = progressVal,
+                currentStepText = if (storageState.currentStepText.isNotEmpty()) storageState.currentStepText else currentStep,
+                progress = if (storageState.scanProgress >= 0f) storageState.scanProgress else progressVal,
                 onCancel = { showScanSheet = false }
             )
         }

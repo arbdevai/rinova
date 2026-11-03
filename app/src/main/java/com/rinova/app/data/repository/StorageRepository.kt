@@ -21,12 +21,13 @@ class StorageRepository(
         try {
             _storageState.value = _storageState.value.copy(
                 isAnalyzing = true,
-                currentStepText = "Membaca tabel partisi sistem..."
+                scanProgress = 0.08f,
+                currentStepText = "Membaca kapasitas dan partisi penyimpanan..."
             )
-            onProgressUpdate("Membaca tabel partisi sistem...", 0.1f)
+            onProgressUpdate("Membaca kapasitas dan partisi penyimpanan...", 0.08f)
 
             // 1. Baca df -k /data
-            val dfResp = adbManager.execute("df -k /data")
+            val dfResp = adbManager.execute("df -k /data", 5000)
             var totalBytes = 0L
             var usedBytes = 0L
             var freeBytes = 0L
@@ -48,12 +49,13 @@ class StorageRepository(
 
             // 2. Analisis App Cache via dumpsys diskstats
             _storageState.value = _storageState.value.copy(
-                currentStepText = "Memindai statistik cache aplikasi..."
+                scanProgress = 0.25f,
+                currentStepText = "Menganalisis statistik partisi data & cache aplikasi..."
             )
-            onProgressUpdate("Memindai statistik cache aplikasi...", 0.3f)
+            onProgressUpdate("Menganalisis statistik partisi data & cache aplikasi...", 0.25f)
 
             var appCacheBytes = 0L
-            val diskStatsResp = adbManager.execute("dumpsys diskstats")
+            val diskStatsResp = adbManager.execute("dumpsys diskstats", 5000)
             diskStatsResp.getOrNull()?.output?.let { out ->
                 for (line in out.lineSequence()) {
                     val trimmed = line.trim()
@@ -66,15 +68,16 @@ class StorageRepository(
 
             // 3. Scan folder di /sdcard/Android/data dan obb
             _storageState.value = _storageState.value.copy(
-                currentStepText = "Memeriksa sisa OBB dan folder aplikasi terhapus..."
+                scanProgress = 0.40f,
+                currentStepText = "Mencocokkan daftar aplikasi terpasang di sistem..."
             )
-            onProgressUpdate("Memeriksa sisa OBB dan folder aplikasi terhapus...", 0.5f)
+            onProgressUpdate("Mencocokkan daftar aplikasi terpasang di sistem...", 0.40f)
 
             val installedPackages = mutableSetOf<String>()
-            val pkgListResp = adbManager.execute("pm list packages")
+            val pkgListResp = adbManager.execute("pm list packages", 10000)
             pkgListResp.getOrNull()?.output?.let { out ->
                 for (line in out.lineSequence()) {
-                    val pkg = line.removePrefix("package:").trim()
+                    val pkg = line.substringAfter("package:").trim()
                     if (pkg.isNotEmpty()) installedPackages.add(pkg)
                 }
             }
@@ -82,48 +85,72 @@ class StorageRepository(
             val orphanedList = mutableListOf<OrphanedDirectory>()
             var orphanedTotalBytes = 0L
 
-            suspend fun inspectFolders(basePath: String) {
-                val listResp = adbManager.execute("ls -1 $basePath")
-                val folders = listResp.getOrNull()?.output?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
-                for (folder in folders) {
-                    if (folder.contains(".") && !installedPackages.contains(folder)) {
-                        // Aplikasi ini tidak terpasang! Cek ukurannya
-                        val fullPath = "$basePath/$folder"
-                        val duResp = adbManager.execute("du -sk $fullPath")
-                        val duOut = duResp.getOrNull()?.output?.trim().orEmpty()
-                        val kb = duOut.split("\\s+".toRegex()).firstOrNull()?.toLongOrNull() ?: 0L
-                        if (kb > 1024L) { // Hanya catat jika > 1 MB
-                            val bytes = kb * 1024L
-                            orphanedTotalBytes += bytes
-                            orphanedList.add(
-                                OrphanedDirectory(
-                                    path = fullPath,
-                                    sizeBytes = bytes,
-                                    folderName = folder,
-                                    reason = "Folder sisa dari aplikasi yang sudah di-uninstall"
-                                )
+            suspend fun inspectFolders(basePath: String, startProg: Float, endProg: Float) {
+                val listResp = adbManager.execute("ls -1 $basePath", 5000)
+                val rawFolders = listResp.getOrNull()?.output?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+                val candidateFolders = rawFolders.filter { folder ->
+                    folder.contains(".") &&
+                    !folder.startsWith("android") &&
+                    !folder.startsWith("com.android") &&
+                    !folder.startsWith("com.google.android") &&
+                    !folder.startsWith("com.samsung") &&
+                    !folder.startsWith("com.sec") &&
+                    !folder.startsWith("com.miui") &&
+                    !folder.startsWith("com.xiaomi") &&
+                    !installedPackages.contains(folder)
+                }
+
+                if (candidateFolders.isEmpty()) {
+                    val step = "Memeriksa $basePath: Tidak ada folder yatim."
+                    _storageState.value = _storageState.value.copy(currentStepText = step, scanProgress = endProg)
+                    onProgressUpdate(step, endProg)
+                    return
+                }
+
+                for ((idx, folder) in candidateFolders.withIndex()) {
+                    val frac = (idx + 1).toFloat() / candidateFolders.size
+                    val prog = startProg + (frac * (endProg - startProg))
+                    val step = "Memeriksa folder yatim: $folder (${idx + 1}/${candidateFolders.size})..."
+                    _storageState.value = _storageState.value.copy(currentStepText = step, scanProgress = prog)
+                    onProgressUpdate(step, prog)
+
+                    val fullPath = "$basePath/$folder"
+                    // Timeout 3 detik agar tidak macet di Scoped Storage
+                    val duResp = adbManager.execute("du -sk \"$fullPath\" 2>/dev/null", 3000)
+                    val duOut = duResp.getOrNull()?.output?.trim().orEmpty()
+                    val kb = duOut.split("\\s+".toRegex()).firstOrNull()?.toLongOrNull() ?: 0L
+                    if (kb > 1024L) { // Hanya catat jika > 1 MB
+                        val bytes = kb * 1024L
+                        orphanedTotalBytes += bytes
+                        orphanedList.add(
+                            OrphanedDirectory(
+                                path = fullPath,
+                                sizeBytes = bytes,
+                                folderName = folder,
+                                reason = "Folder sisa dari aplikasi yang sudah di-uninstall"
                             )
-                        }
+                        )
                     }
                 }
             }
 
-            inspectFolders("/sdcard/Android/data")
-            inspectFolders("/sdcard/Android/obb")
+            inspectFolders("/sdcard/Android/data", 0.45f, 0.65f)
+            inspectFolders("/sdcard/Android/obb", 0.65f, 0.80f)
 
             // 4. Periksa crash logs / tombstones / anr
             _storageState.value = _storageState.value.copy(
-                currentStepText = "Memindai file crash dump sistem..."
+                scanProgress = 0.85f,
+                currentStepText = "Memindai file crash dump sistem (tombstones & ANR)..."
             )
-            onProgressUpdate("Memindai file crash dump sistem...", 0.8f)
+            onProgressUpdate("Memindai file crash dump sistem (tombstones & ANR)...", 0.85f)
 
             var crashDumpsBytes = 0L
-            val tombResp = adbManager.execute("du -sk /data/tombstones 2>/dev/null")
+            val tombResp = adbManager.execute("du -sk /data/tombstones 2>/dev/null", 3000)
             tombResp.getOrNull()?.output?.let { out ->
                 val kb = out.trim().split("\\s+".toRegex()).firstOrNull()?.toLongOrNull() ?: 0L
                 crashDumpsBytes += (kb * 1024L)
             }
-            val anrResp = adbManager.execute("du -sk /data/anr 2>/dev/null")
+            val anrResp = adbManager.execute("du -sk /data/anr 2>/dev/null", 3000)
             anrResp.getOrNull()?.output?.let { out ->
                 val kb = out.trim().split("\\s+".toRegex()).firstOrNull()?.toLongOrNull() ?: 0L
                 crashDumpsBytes += (kb * 1024L)
@@ -139,6 +166,7 @@ class StorageRepository(
                 crashDumpsBytes = crashDumpsBytes,
                 orphanedDirectories = orphanedList,
                 isAnalyzing = false,
+                scanProgress = 1.0f,
                 currentStepText = "Analisis selesai.",
                 lastScanTimestamp = System.currentTimeMillis()
             )
@@ -148,6 +176,7 @@ class StorageRepository(
         } catch (e: Exception) {
             _storageState.value = _storageState.value.copy(
                 isAnalyzing = false,
+                scanProgress = 0f,
                 currentStepText = "Gagal memindai: ${e.localizedMessage}"
             )
             Result.failure(e)

@@ -62,6 +62,7 @@ fun AdwareHunterScreen(
 ) {
     val threats by adwareHunterRepository.scannedThreats.collectAsStateWithLifecycle()
     val isScanning by adwareHunterRepository.isScanning.collectAsStateWithLifecycle()
+    val scanProgress by adwareHunterRepository.scanProgress.collectAsStateWithLifecycle()
     val currentStep by adwareHunterRepository.currentScanningStep.collectAsStateWithLifecycle()
 
     var capturedWindowPkg by remember { mutableStateOf<String?>(null) }
@@ -119,7 +120,7 @@ fun AdwareHunterScreen(
             ScanningProgressSheet(
                 title = "Memindai Izin & Malware Tersembunyi",
                 currentStepText = currentStep,
-                progress = -1f,
+                progress = scanProgress,
                 onCancel = {}
             )
         }

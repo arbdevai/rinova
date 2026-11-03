@@ -23,6 +23,7 @@ data class StorageBreakdown(
     val hiddenMediaCacheBytes: Long = 0L,
     val orphanedDirectories: List<OrphanedDirectory> = emptyList(),
     val isAnalyzing: Boolean = false,
+    val scanProgress: Float = -1f,
     val currentStepText: String = "",
     val lastScanTimestamp: Long = 0L
 )

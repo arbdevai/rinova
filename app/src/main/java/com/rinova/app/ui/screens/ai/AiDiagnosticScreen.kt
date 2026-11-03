@@ -256,9 +256,11 @@ fun AiDiagnosticScreen(
         // Quick Suggestion Prompt Chips
         val quickPrompts = listOf(
             "Kenapa HP ini lambat?",
+            "Aplikasi apa yang memakan banyak memori?",
+            "Riset keamanan paket aplikasi di web",
             "Aman matikan RAM Plus?",
-            "Hapus adware tersembunyi",
-            "Pangkas cache galeri & sistem"
+            "Pangkas cache galeri & sistem",
+            "Hapus adware tersembunyi"
         )
 
         LazyRow(

@@ -12,6 +12,7 @@ import com.rinova.app.core.model.AiChatAction
 import com.rinova.app.core.model.ChatMessage
 import com.rinova.app.core.model.DeviceInfo
 import com.rinova.app.core.model.MessageSender
+import com.rinova.app.core.util.FileSizeFormatter
 import com.rinova.app.data.debloat.SafeWhitelist
 import java.io.IOException
 import kotlinx.serialization.json.Json
@@ -50,9 +51,10 @@ class AiDiagnosticRepository(
 
     fun initChatSessionIfNeeded(device: DeviceInfo?) {
         if (_chatMessages.value.isEmpty()) {
-            val devName = if (device != null) "${device.brand} ${device.model}" else "HP Android"
-            val androidVer = device?.androidVersion ?: "14"
-            val welcomeText = "Halo! Saya Dr. Rinova, asisten pintar optimasi Android Anda.\n\nSaya telah terhubung ke perangkat target $devName (Android $androidVer). Apa kendala atau keluhan yang sedang Anda alami? (Misalnya: HP lemot/patah-patah saat main game, memori cepat penuh, baterai boros, atau ingin mematikan iklan sistem bawaan?)"
+            val resolvedDevice = device ?: (adbManager.connectionState.value as? AdbConnectionState.Connected)?.device
+            val devName = if (resolvedDevice != null) "${resolvedDevice.brand} ${resolvedDevice.model}" else "HP Android Pasien"
+            val androidVer = resolvedDevice?.androidVersion ?: "14"
+            val welcomeText = "Halo! Saya Dr. Rinova, asisten pintar optimasi Android Anda.\n\nSaya telah terhubung ke perangkat target $devName (Android $androidVer). Apa kendala atau keluhan yang sedang dialami? (Misalnya: HP lambat/lemot saat main game, memori penuh, baterai boros, atau ingin membasmi iklan & bloatware tersembunyi?)"
             _chatMessages.value = listOf(
                 ChatMessage(
                     sender = MessageSender.AI,
@@ -82,21 +84,19 @@ class AiDiagnosticRepository(
         _isSendingChat.value = true
 
         try {
-            // 2. Susun System Instruction Dr. Rinova yang kaya konteks empiris
+            // 2. Kumpulkan telemetri riil dari perangkat target
+            val realTelemetry = buildRealDeviceTelemetry(device)
+
+            // 3. Susun System Instruction Dr. Rinova yang kaya konteks empiris lapangan
             val systemInstruction = buildString {
-                append("Anda adalah Dr. Rinova, konsultan dokter HP dan asisten optimasi Android yang ramah, santai, empatik, dan anti-jargon teknis.\n")
-                if (device != null) {
-                    append("Data perangkat target:\n")
-                    append("- Model: ${device.brand} ${device.model} (${device.manufacturer})\n")
-                    append("- OS: Android ${device.androidVersion} (SDK ${device.sdkInt}, Patch ${device.securityPatch})\n")
-                    append("- RAM: ${device.freeRamMb} MB bebas dari total ${device.totalRamMb} MB\n")
-                    append("- Baterai: ${device.batteryLevel}% (${if (device.isCharging) "Mengisi" else "Tidak mengisi"})\n")
-                    append("- ROM: ${device.customRomBrand} (CPU: ${device.cpuAbi})\n")
-                }
-                append("\nATURAN:\n")
-                append("1. Berbicaralah dengan bahasa Indonesia yang ramah, menenangkan, tidak kaku, dan mudah dimengerti orang awam.\n")
-                append("2. JANGAN membuat pengguna takut atau bingung dengan istilah terminal linux mentah di percakapan teks utama.\n")
-                append("3. Jika menyarankan perbaikan/tindakan (misal matikan RAM Plus, bersihkan cache galeri, matikan adware Aura/MSA, optimasi throttler), WAJIB sertakan kartu aksi terstruktur di akhir respons Anda dalam blok markdown ```action ... ``` persis seperti format JSON ini:\n")
+                append("Anda adalah Dr. Rinova, konsultan dokter HP AI dan asisten optimasi Android otonom yang ramah, santai, empatik, berbasis data riil lapangan, dan anti-jawaban template kosong.\n")
+                append("Anda terhubung langsung ke perangkat target melalui ADB Wireless dan memiliki akses ke alat pencarian web Google Search secara live untuk meriset paket/aplikasi asing.\n\n")
+                append(realTelemetry)
+                append("\n\nATURAN RESPON & TINDAKAN:\n")
+                append("1. Berbicaralah dalam Bahasa Indonesia yang ramah, menenangkan, tidak kaku, dan mudah dimengerti (seperti teknisi ahli yang menjelaskan ke sahabat sendiri).\n")
+                append("2. RUJUK DATA RIIL DI ATAS! Sebutkan tipe HP spesifik (${device?.brand ?: "Android"} ${device?.model ?: ""}), sisa penyimpanan riil, aplikasi pihak ketiga yang benar-benar terpasang di HP tersebut, dan RAM aktual jika relevan dengan pertanyaan user.\n")
+                append("3. JIKA ADA APLIKASI ATAU PAKET ASING yang ditanyakan atau ditemukan mencurigakan (misalnya CapCut com.lemon.lvoverseas, ReVanced app.morphe.android.youtube, game Roblox, dsb), gunakan pengetahuan web Google Search untuk menjelaskan fungsi aplikasi tersebut secara akurat.\n")
+                append("4. JIKA MENYARANKAN TINDAKAN PERBAIKAN (misal bersihkan cache sistem, matikan RAM Plus, debloat adware sponsor, atau optimasi), WAJIB sertakan kartu aksi terstruktur di akhir respons Anda dalam blok markdown ```action ... ``` persis seperti ini:\n")
                 append("```action\n")
                 append("{\n")
                 append("  \"title\": \"Judul Singkat Tindakan\",\n")
@@ -108,14 +108,20 @@ class AiDiagnosticRepository(
                 append("Rinova akan otomatis mengubah blok ```action``` tersebut menjadi tombol aksi 1-klik di layar pengguna!")
             }
 
-            // 3. Susun histori percakapan
+            // 4. Susun histori percakapan
             val history = _chatMessages.value.map { msg ->
                 val role = if (msg.sender == MessageSender.USER) "user" else "model"
                 Pair(role, msg.text)
             }
 
-            // 4. Panggil Gemini
-            val responseResult = geminiClient.chat(apiKey, systemInstruction, history, modelName)
+            // 5. Panggil Gemini dengan Google Search Grounding aktif
+            val responseResult = geminiClient.chat(
+                apiKey = apiKey,
+                systemInstructionText = systemInstruction,
+                messages = history,
+                modelName = modelName,
+                enableSearchGrounding = true
+            )
             if (responseResult.isFailure) {
                 return@withContext Result.failure(responseResult.exceptionOrNull() ?: IOException("Gagal memanggil Gemini"))
             }
@@ -281,5 +287,60 @@ class AiDiagnosticRepository(
         val cleanCmd = command.trim()
         if (cleanCmd.isEmpty()) return@withContext Result.failure(IllegalArgumentException("Perintah kosong"))
         adbManager.execute(cleanCmd).map { it.allOutput }
+    }
+
+    private suspend fun buildRealDeviceTelemetry(device: DeviceInfo?): String = withContext(Dispatchers.IO) {
+        val sb = StringBuilder()
+        sb.appendLine("=== TELEMETRI REAL-TIME PERANGKAT TARGET ===")
+        if (device != null) {
+            sb.appendLine("1. IDENTITAS PERANGKAT:")
+            sb.appendLine("   - Merk & Model: ${device.brand} ${device.model} (${device.manufacturer})")
+            sb.appendLine("   - Versi OS: Android ${device.androidVersion} (API SDK ${device.sdkInt}, Patch ${device.securityPatch})")
+            sb.appendLine("   - CPU ABI: ${device.cpuAbi}")
+            sb.appendLine("   - Baterai: ${device.batteryLevel}% (${if (device.isCharging) "Sedang Diisi Daya" else "Menggunakan Baterai"})")
+            sb.appendLine("   - Memori RAM: ${device.freeRamMb} MB bebas dari total ${device.totalRamMb} MB")
+            if (device.customRomBrand.isNotEmpty()) {
+                sb.appendLine("   - Varian Vendor / ROM: ${device.customRomBrand}")
+            }
+        } else {
+            sb.appendLine("1. IDENTITAS PERANGKAT: Belum terhubung ke ADB.")
+        }
+
+        // Storage Breakdown
+        val storage = storageRepo.storageState.value
+        if (storage.totalBytes > 0) {
+            sb.appendLine("\n2. PENYIMPANAN FISIK (/data):")
+            sb.appendLine("   - Total Kapasitas: ${FileSizeFormatter.format(storage.totalBytes)}")
+            sb.appendLine("   - Terpakai: ${FileSizeFormatter.format(storage.usedBytes)}")
+            sb.appendLine("   - Ruang Bebas: ${FileSizeFormatter.format(storage.freeBytes)}")
+            sb.appendLine("   - Akumulasi App Cache: ${FileSizeFormatter.format(storage.appCacheBytes)}")
+            if (storage.orphanedDirectories.isNotEmpty()) {
+                sb.appendLine("   - Folder Sisa (Orphaned) (${storage.orphanedDirectories.size} folder): ${storage.orphanedDirectories.joinToString { "${it.folderName} (${FileSizeFormatter.format(it.sizeBytes)})" }}")
+            }
+        }
+
+        // 3rd Party Installed Packages
+        try {
+            val pkgResp = adbManager.execute("pm list packages -3", 4000)
+            val pkgs = pkgResp.getOrNull()?.output?.lines()
+                ?.map { it.substringAfter("package:").trim() }
+                ?.filter { it.isNotEmpty() && !it.contains(" ") }
+                ?: emptyList()
+            if (pkgs.isNotEmpty()) {
+                sb.appendLine("\n3. APLIKASI PIHAK KETIGA YANG TERPASANG (${pkgs.size} aplikasi):")
+                sb.appendLine("   " + pkgs.take(30).joinToString(", "))
+            }
+        } catch (_: Exception) {}
+
+        // Threats detected by Adware Hunter
+        val threats = adwareRepo.scannedThreats.value
+        if (threats.isNotEmpty()) {
+            sb.appendLine("\n4. TEMUAN ADWARE & ANOMALI KEAMANAN:")
+            threats.forEach { t ->
+                sb.appendLine("   - [${t.severity}] ${t.packageName} -> ${t.evidenceReason}")
+            }
+        }
+
+        sb.toString()
     }
 }

@@ -42,12 +42,16 @@ internal class TlsAdbSession(private val connection: AdbConnection) : RinovaAdbS
 
     override suspend fun exec(command: String, timeoutMs: Long): AdbShellResponse = withContext(Dispatchers.IO) {
         val stream = try {
-            connection.open("shell,v2,raw:$command\n")
+            connection.open("exec:$command")
         } catch (_: Exception) {
             try {
                 connection.open("shell:$command\n")
             } catch (_: Exception) {
-                connection.open("exec:$command")
+                try {
+                    connection.open("shell,v2,raw:$command\n")
+                } catch (e: Exception) {
+                    throw IOException("Tidak dapat membuka channel ADB stream untuk '$command': ${e.message}", e)
+                }
             }
         }
 

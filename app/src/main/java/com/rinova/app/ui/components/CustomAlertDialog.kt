@@ -216,7 +216,7 @@ fun ScanningProgressSheet(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "Proses Berjalan",
+                    text = if (progress >= 0f) "${(progress * 100).coerceIn(0f, 100f).toInt()}% Selesai" else "Proses Berjalan",
                     color = CyanPrimary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
@@ -225,7 +225,7 @@ fun ScanningProgressSheet(
 
             if (progress >= 0f) {
                 LinearProgressIndicator(
-                    progress = { progress },
+                    progress = { progress.coerceIn(0f, 1f) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)

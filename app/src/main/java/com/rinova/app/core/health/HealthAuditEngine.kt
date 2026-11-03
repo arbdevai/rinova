@@ -75,7 +75,7 @@ class HealthAuditEngine(
         // 2. Audit Adware & Bloatware Pabrikan
         val installedPackagesRaw = adbRepository.executeCommand("pm list packages").getOrNull()?.output.orEmpty()
         val installedPackages = installedPackagesRaw.lines()
-            .map { it.removePrefix("package:").trim() }
+            .map { it.substringAfter("package:").trim() }
             .filter { it.isNotEmpty() }
             .toSet()
 
