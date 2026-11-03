@@ -1,0 +1,313 @@
+{
+  "version": "1.0.0",
+  "name": "Rinova Scanner Definition Rules",
+  "target_platforms": ["Android 9", "Android 10", "Android 11", "Android 12", "Android 13", "Android 14", "Android 15"],
+  "engine_mode": "no_root_adb_or_shizuku",
+  "modules": [
+    {
+      "id": "module_system_forensic",
+      "title": "Integritas Sistem & Keamanan",
+      "description": "Memeriksa status root, bootloader, SELinux, dan potensi spyware",
+      "checks": [
+        {
+          "key": "bootloader_lock",
+          "title": "Status Kunci Bootloader",
+          "command": "getprop ro.boot.flash.locked",
+          "expected_safe": "1",
+          "danger_value": "0",
+          "severity": "HIGH",
+          "description": "Jika bernilai 0, bootloader terbuka (unlocked) dan rentan modifikasi offline."
+        },
+        {
+          "key": "verified_boot",
+          "title": "Android Verified Boot (AVB)",
+          "command": "getprop ro.boot.verifiedbootstate",
+          "expected_safe": "green",
+          "severity": "HIGH",
+          "description": "Green = partisi sistem resmi pabrik dan tidak di-tamper."
+        },
+        {
+          "key": "selinux_mode",
+          "title": "Status Kernel SELinux",
+          "command": "getenforce",
+          "expected_safe": "Enforcing",
+          "severity": "CRITICAL",
+          "description": "Permissive berarti pertahanan kernel Android dinonaktifkan."
+        },
+        {
+          "key": "accessibility_spy_check",
+          "title": "Aplikasi Aksesibilitas (Audit Keylogger / Stalkerware)",
+          "command": "settings get secure enabled_accessibility_services",
+          "severity": "CRITICAL",
+          "risk_condition": "contains_third_party_app",
+          "remediation": "settings put secure enabled_accessibility_services ''",
+          "description": "Aplikasi jahat / malware sering meminta izin aksesibilitas untuk membaca layar dan tombol pengguna."
+        },
+        {
+          "key": "notification_listener_audit",
+          "title": "Akses Pembaca Notifikasi (Audit Penyadapan OTP/SMS)",
+          "command": "settings get secure enabled_notification_listeners",
+          "severity": "HIGH",
+          "risk_condition": "contains_unauthorized_package",
+          "description": "Memeriksa aplikasi mana saja yang bisa mengintip isi notifikasi perbankan atau chat."
+        },
+        {
+          "key": "device_admin_audit",
+          "title": "Device Administrator Apps",
+          "command": "dumpsys device_policy",
+          "filter": "admin=",
+          "severity": "HIGH",
+          "description": "Mendeteksi aplikasi yang memiliki izin admin perangkat yang sulit dicopot."
+        }
+      ]
+    },
+    {
+      "id": "module_storage_health",
+      "title": "Kesehatan & Sampah Penyimpanan (Storage Audit)",
+      "description": "Mendeteksi partisi storage kritis, cache monster OEM, dan junk files",
+      "checks": [
+        {
+          "key": "data_partition_usage",
+          "title": "Kapasitas Partisi /data",
+          "command": "df -h /data",
+          "threshold_alert_percent": 90,
+          "severity": "HIGH",
+          "description": "Jika penggunaan di atas 90%, performa I/O flash eMMC/UFS akan anjlok drastis."
+        },
+        {
+          "key": "miui_gallery_cache_bomb",
+          "title": "Bomb Cache Galeri Xiaomi/MIUI",
+          "oem": "xiaomi",
+          "scan_path": "/storage/emulated/0/Android/data/com.miui.gallery/files/ThumbnailFile",
+          "scan_path_secondary": "/storage/emulated/0/Android/data/com.miui.gallery/files/gallery_disk_cache",
+          "clean_command": "rm -rf /storage/emulated/0/Android/data/com.miui.gallery/files/ThumbnailFile/* /storage/emulated/0/Android/data/com.miui.gallery/files/gallery_disk_cache/*",
+          "severity": "MEDIUM",
+          "description": "Cache thumbnail galeri MIUI yang bisa membengkak 10GB-20GB tanpa sepengetahuan pengguna."
+        },
+        {
+          "key": "samsung_gallery_trash_cache",
+          "title": "Cache & Sampah Galeri Samsung",
+          "oem": "samsung",
+          "package": "com.sec.android.gallery3d",
+          "severity": "MEDIUM",
+          "description": "Cache render dan folder trash yang menumpuk di memori Samsung One UI."
+        },
+        {
+          "key": "storage_trim_health",
+          "title": "Eksekusi TRIM Flash",
+          "command": "sm fstrim",
+          "severity": "LOW",
+          "description": "Memerintahkan controller flash membebaskan blok memori yang tidak lagi dipakai agar write speed pulih."
+        }
+      ]
+    },
+    {
+      "id": "module_memory_ram",
+      "title": "Audit RAM & Paging Virtual (RAM Plus / Extension)",
+      "description": "Mendeteksi bottleneck RAM, swap eMMC, dan aplikasi boros memori",
+      "checks": [
+        {
+          "key": "meminfo_available",
+          "title": "Ketersediaan RAM Real-Time",
+          "command": "cat /proc/meminfo",
+          "metrics": ["MemTotal", "MemFree", "MemAvailable", "SwapTotal", "SwapFree"],
+          "severity": "MEDIUM"
+        },
+        {
+          "key": "virtual_ram_plus_samsung",
+          "title": "Samsung RAM Plus Size",
+          "oem": "samsung",
+          "command": "settings get global ram_expand_size",
+          "recommendation_low_end": "0 (Nonaktifkan untuk mencegah stuttering pada storage eMMC)",
+          "tweak_command": "settings put global ram_expand_size 0",
+          "severity": "MEDIUM"
+        },
+        {
+          "key": "top_ram_consumers",
+          "title": "Proses Pemakan RAM Teratas",
+          "command": "dumpsys meminfo",
+          "parse_section": "Total RSS by process:",
+          "limit": 15,
+          "severity": "LOW",
+          "description": "Mengidentifikasi aplikasi latar belakang yang memonopoli RAM."
+        }
+      ]
+    },
+    {
+      "id": "module_touch_display",
+      "title": "Layar, Touch Controller & Refresh Rate",
+      "description": "Mendeteksi tipe IC touchscreen (Ori vs KW) dan optimasi respon",
+      "checks": [
+        {
+          "key": "touchscreen_ic_detect",
+          "title": "Deteksi IC Touch Controller",
+          "command": "dumpsys input",
+          "filter": "Touch Input Mapper",
+          "known_vendors": {
+            "jadard": { "type": "Aftermarket / LCD KW Incell", "sampling_rate": "Rendah (60-100Hz)", "recommend_high_sensitivity": true },
+            "NVTCapacitiveTouchScreen": { "type": "Novatek OEM Original", "sampling_rate": "Tinggi (180-240Hz)" },
+            "fts": { "type": "FocalTech OEM", "sampling_rate": "Standar/Tinggi" },
+            "synaptics": { "type": "Synaptics Premium OEM", "sampling_rate": "Tinggi" }
+          }
+        },
+        {
+          "key": "touch_latency_tweak",
+          "title": "Konfigurasi Sensitivitas & Delay Sentuh",
+          "commands": {
+            "get_sensitivity": "settings get system touch_sensitivity",
+            "set_sensitivity_high": "settings put system touch_sensitivity 1",
+            "get_long_press": "settings get secure long_press_timeout",
+            "set_long_press_fast": "settings put secure long_press_timeout 300",
+            "get_pointer_speed": "settings get system pointer_speed",
+            "set_pointer_speed_snappy": "settings put system pointer_speed 3"
+          }
+        },
+        {
+          "key": "refresh_rate_lock",
+          "title": "Refresh Rate Lock (Anti-Drop FPS)",
+          "commands": {
+            "get_user_rr": "settings get system user_refresh_rate",
+            "get_min_rr": "settings get system min_refresh_rate",
+            "get_peak_rr": "settings get system peak_refresh_rate",
+            "lock_90hz": "settings put system min_refresh_rate 90.0",
+            "lock_120hz": "settings put system min_refresh_rate 120.0"
+          }
+        },
+        {
+          "key": "animation_scale_profile",
+          "title": "Kecepatan Skala Animasi UI",
+          "commands": {
+            "window": "settings get global window_animation_scale",
+            "transition": "settings get global transition_animation_scale",
+            "animator": "settings get global animator_duration_scale",
+            "set_fast_05x": "settings put global window_animation_scale 0.5 && settings put global transition_animation_scale 0.5 && settings put global animator_duration_scale 0.5"
+          }
+        }
+      ]
+    },
+    {
+      "id": "module_bloatware_radar",
+      "title": "Radar Bloatware, Adware & Telemetri",
+      "description": "Database deteksi paket sampah lintas pabrikan (Samsung, Xiaomi, Umum)",
+      "database": [
+        {
+          "package": "com.aura.oobe.samsung.gl",
+          "name": "Aura / IronSource Adware",
+          "vendor": "Samsung",
+          "category": "ADWARE",
+          "ram_impact_mb": 90,
+          "risk": "SAFE_TO_REMOVE",
+          "description": "Pemasang aplikasi sponsor otomatis dan penayang iklan bawaan."
+        },
+        {
+          "package": "com.miui.msa.global",
+          "name": "MSA (MIUI System Ads)",
+          "vendor": "Xiaomi",
+          "category": "ADWARE",
+          "ram_impact_mb": 45,
+          "risk": "SAFE_TO_REMOVE",
+          "description": "Server penampil iklan di aplikasi sistem MIUI."
+        },
+        {
+          "package": "com.miui.analytics",
+          "name": "MIUI Analytics",
+          "vendor": "Xiaomi",
+          "category": "TELEMETRY",
+          "ram_impact_mb": 35,
+          "risk": "SAFE_TO_REMOVE",
+          "description": "Mengirim data statistik kebiasaan pengguna ke server Xiaomi."
+        },
+        {
+          "package": "com.miui.daemon",
+          "name": "MIUI Daemon",
+          "vendor": "Xiaomi",
+          "category": "BATTERY_DRAIN",
+          "ram_impact_mb": 40,
+          "risk": "SAFE_TO_REMOVE",
+          "description": "Background process pelacak sistem yang sering memicu wake lock baterai."
+        },
+        {
+          "package": "com.xiaomi.joyose",
+          "name": "Joyose Throttler",
+          "vendor": "Xiaomi",
+          "category": "THROTTLING",
+          "ram_impact_mb": 50,
+          "risk": "OPTIONAL",
+          "description": "Layanan pembatas performa/FPS game. Menonaktifkan ini membuat FPS game lebih stabil."
+        },
+        {
+          "package": "com.xiaomi.mipicks",
+          "name": "GetApps",
+          "vendor": "Xiaomi",
+          "category": "APP_STORE_NOTIF",
+          "ram_impact_mb": 100,
+          "risk": "SAFE_IF_NOT_USED",
+          "description": "Toko aplikasi kedua Xiaomi yang memunculkan notifikasi promosi."
+        },
+        {
+          "package": "com.facebook.system",
+          "name": "Facebook System Installer",
+          "vendor": "All",
+          "category": "OEM_BLOAT",
+          "ram_impact_mb": 30,
+          "risk": "SAFE_TO_REMOVE",
+          "description": "Service bawaan pabrik untuk memasang update Facebook diam-diam."
+        },
+        {
+          "package": "com.facebook.appmanager",
+          "name": "Facebook App Manager",
+          "vendor": "All",
+          "category": "OEM_BLOAT",
+          "ram_impact_mb": 45,
+          "risk": "SAFE_TO_REMOVE",
+          "description": "Service latar belakang pengelola aplikasi Facebook."
+        },
+        {
+          "package": "com.facebook.services",
+          "name": "Facebook Services",
+          "vendor": "All",
+          "category": "TELEMETRY",
+          "ram_impact_mb": 55,
+          "risk": "SAFE_TO_REMOVE",
+          "description": "Pelacak latar belakang Facebook."
+        },
+        {
+          "package": "com.sec.android.diagmonagent",
+          "name": "Samsung Diagnostic Monitor",
+          "vendor": "Samsung",
+          "category": "TELEMETRY",
+          "ram_impact_mb": 50,
+          "risk": "SAFE_TO_REMOVE",
+          "description": "Pelacak diagnosa Samsung."
+        },
+        {
+          "package": "com.samsung.android.game.gos",
+          "name": "Samsung Game Optimizing Service (GOS)",
+          "vendor": "Samsung",
+          "category": "THROTTLING",
+          "ram_impact_mb": 40,
+          "risk": "SAFE_TO_REMOVE",
+          "description": "Pembatas resolusi dan FPS pada game di perangkat Samsung."
+        },
+        {
+          "package": "com.samsung.android.dynamiclock",
+          "name": "Glance / Dynamic Lock Screen",
+          "vendor": "Samsung",
+          "category": "ADWARE_CAROUSEL",
+          "ram_impact_mb": 35,
+          "risk": "SAFE_TO_REMOVE",
+          "description": "Carousel wallpaper layar kunci yang memakan kuota dan menampilkan berita/promosi."
+        },
+        {
+          "package": "com.samsung.android.kidsinstaller",
+          "name": "Samsung Kids Installer",
+          "vendor": "Samsung",
+          "category": "JUNK",
+          "ram_impact_mb": 20,
+          "risk": "SAFE_TO_REMOVE",
+          "description": "Pemasang fitur Samsung Kids yang jarang dipakai."
+        }
+      ]
+    }
+  ]
+}

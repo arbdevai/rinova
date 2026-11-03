@@ -8,6 +8,7 @@ import com.rinova.app.core.model.DeviceInfo
 import com.rinova.app.core.util.VendorProfileDetector
 import dadb.AdbShellResponse
 import dadb.Dadb
+import io.github.muntashirakon.adb.AdbConnection
 import io.github.muntashirakon.adb.PairingConnectionCtx
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,15 +18,78 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.util.concurrent.TimeUnit
+
+/**
+ * Abstraksi sesi koneksi ADB aktif:
+ * - [TlsAdbSession]: Engine modern untuk Android 11-15+ Wireless Debugging (TLS 1.3 over dynamic port).
+ * - [DadbSession]: Engine fallback untuk port 5555 TCP legacy (unencrypted token auth).
+ */
+internal sealed interface RinovaAdbSession {
+    val isConnected: Boolean
+    suspend fun exec(command: String, timeoutMs: Long): AdbShellResponse
+    fun close()
+}
+
+internal class TlsAdbSession(private val connection: AdbConnection) : RinovaAdbSession {
+    override val isConnected: Boolean
+        get() = connection.isConnected
+
+    override suspend fun exec(command: String, timeoutMs: Long): AdbShellResponse = withContext(Dispatchers.IO) {
+        val stream = try {
+            connection.open("exec:$command")
+        } catch (_: Exception) {
+            connection.open("shell:$command\n")
+        }
+
+        try {
+            val output = withTimeoutOrNull(timeoutMs) {
+                val input = stream.openInputStream()
+                val buffer = ByteArray(8192)
+                val baos = ByteArrayOutputStream()
+                var readBytes: Int
+                while (true) {
+                    readBytes = input.read(buffer, 0, buffer.size)
+                    if (readBytes == -1) break
+                    baos.write(buffer, 0, readBytes)
+                }
+                baos.toString(Charsets.UTF_8.name())
+            } ?: throw IOException("Perintah ADB '$command' melebihi batas waktu (${timeoutMs}ms)")
+
+            AdbShellResponse(output = output, error = "", exitCode = 0)
+        } finally {
+            try { stream.close() } catch (_: Exception) {}
+        }
+    }
+
+    override fun close() {
+        try { connection.close() } catch (_: Exception) {}
+    }
+}
+
+internal class DadbSession(private val dadb: Dadb) : RinovaAdbSession {
+    override val isConnected: Boolean = true
+
+    override suspend fun exec(command: String, timeoutMs: Long): AdbShellResponse = withContext(Dispatchers.IO) {
+        withTimeoutOrNull(timeoutMs) {
+            dadb.shell(command)
+        } ?: throw IOException("Perintah ADB '$command' melebihi batas waktu (${timeoutMs}ms)")
+    }
+
+    override fun close() {
+        try { dadb.close() } catch (_: Exception) {}
+    }
+}
 
 class AdbConnectionManager(private val context: Context) {
 
     private val mutex = Mutex()
-    private var activeDadb: Dadb? = null
+    private var activeSession: RinovaAdbSession? = null
 
     private val _connectionState = MutableStateFlow<AdbConnectionState>(AdbConnectionState.Disconnected)
     val connectionState: StateFlow<AdbConnectionState> = _connectionState.asStateFlow()
@@ -56,14 +120,58 @@ class AdbConnectionManager(private val context: Context) {
                 // 2. Muat kredensial keypair Rinova
                 val keyBundle = RinovaAdbKeyStore.getOrGenerateKeyBundle(context)
 
-                // 3. Inisialisasi Dadb handshake dengan keypair tersimpan
-                activeDadb?.close()
-                val dadb = Dadb.create(host, port, keyPair = keyBundle.dadbKeyPair)
-                activeDadb = dadb
+                // 3. Tutup sesi sebelumnya
+                activeSession?.close()
+                activeSession = null
 
-                // 4. Ambil data identitas perangkat target
+                // 4. Inisialisasi Handshake: Coba TLS 1.3 (Wireless Debugging Android 11+) dulu
+                var session: RinovaAdbSession? = null
+                var tlsError: Exception? = null
+
+                try {
+                    RinovaLogManager.d("CONN", "Membuka kanal TLS 1.3 dengan sertifikat teknisi Rinova...")
+                    val tlsConn = AdbConnection.create(
+                        host,
+                        port,
+                        keyBundle.javaKeyPair.private,
+                        keyBundle.certificate
+                    )
+                    val connected = tlsConn.connect(6000, TimeUnit.MILLISECONDS, true)
+                    if (connected && tlsConn.isConnected) {
+                        RinovaLogManager.i("CONN", "Kanal TLS 1.3 berhasil terhubung & terverifikasi.")
+                        session = TlsAdbSession(tlsConn)
+                    } else {
+                        throw IOException("TLS connect mengembalikan status false")
+                    }
+                } catch (e: Exception) {
+                    tlsError = e
+                    RinovaLogManager.w("CONN", "Kanal TLS tidak tersambung (${e.message}), mencoba fallback ke TCP Legacy (Port 5555)...")
+                }
+
+                // 5. Fallback ke TCP Legacy (dadb) jika TLS gagal atau perangkat versi lama
+                if (session == null) {
+                    try {
+                        val dadb = Dadb.create(host, port, keyPair = keyBundle.dadbKeyPair)
+                        val probe = dadb.shell("echo 1")
+                        if (probe.exitCode != 0 && probe.output.isEmpty()) {
+                            throw IOException("Probe TCP legacy tidak merespons output.")
+                        }
+                        RinovaLogManager.i("CONN", "Kanal TCP Legacy (dadb) berhasil terhubung.")
+                        session = DadbSession(dadb)
+                    } catch (e: Exception) {
+                        val primaryMsg = tlsError?.localizedMessage ?: e.localizedMessage
+                        val err = "Gagal otorisasi ADB ke $host:$port: $primaryMsg. Pastikan HP target dan HP teknisi berada dalam satu WiFi, dan telah dipasangkan via menu 'Pairing Nirkabel'."
+                        RinovaLogManager.e("CONN", err, e)
+                        _connectionState.value = AdbConnectionState.Error(err)
+                        return@withContext Result.failure(IOException(err, e))
+                    }
+                }
+
+                activeSession = session
+
+                // 6. Ambil data identitas perangkat target
                 RinovaLogManager.d("CONN", "Mengambil identitas getprop dan hardware dari target...")
-                val deviceInfo = fetchDeviceInfoInternal(dadb)
+                val deviceInfo = fetchDeviceInfoInternal(session)
 
                 _connectionState.value = AdbConnectionState.Connected(host, port, deviceInfo)
                 RinovaLogManager.i(
@@ -72,9 +180,9 @@ class AdbConnectionManager(private val context: Context) {
                 )
                 Result.success(deviceInfo)
             } catch (e: Exception) {
-                activeDadb?.close()
-                activeDadb = null
-                val err = "Gagal otorisasi ADB ke $host:$port: ${e.localizedMessage ?: "Koneksi ditolak"}. Jika baru pertama kali, lakukan 'Pairing Nirkabel' terlebih dahulu atau periksa popup konfirmasi di HP target."
+                activeSession?.close()
+                activeSession = null
+                val err = "Gagal koneksi ke $host:$port: ${e.localizedMessage}"
                 RinovaLogManager.e("CONN", err, e)
                 _connectionState.value = AdbConnectionState.Error(err)
                 Result.failure(IOException(err, e))
@@ -139,51 +247,39 @@ class AdbConnectionManager(private val context: Context) {
             )
         }
 
-        // 4. TIER 2: Fallback ke Biner CLI Lokal jika tersedia
-        val candidates = listOf(
-            File(context.applicationInfo.nativeLibraryDir, "libadb.so").absolutePath,
-            "/data/data/com.termux/files/usr/bin/adb",
+        // 4. TIER 2: Deteksi biner adb lokal (Termux / Linux chroot)
+        val candidatePaths = listOf(
             "adb",
+            "/usr/bin/adb",
             "/system/bin/adb",
-            "/data/local/tmp/adb"
+            "/data/local/tmp/adb",
+            "${context.filesDir.absolutePath}/bin/adb"
         )
-
-        var adbPath: String? = null
-        for (c in candidates) {
+        val validBinary = candidatePaths.firstOrNull { path ->
             try {
-                val f = File(c)
-                if (c == "adb" || (f.exists() && f.canExecute())) {
-                    val p = ProcessBuilder(listOf(c, "version"))
-                        .apply {
-                            environment()["HOME"] = context.filesDir.absolutePath
-                            environment()["TMPDIR"] = context.cacheDir.absolutePath
-                        }
-                        .redirectErrorStream(true)
-                        .start()
-                    val versionOut = p.inputStream.bufferedReader().use { it.readText() }.trim()
-                    if (p.waitFor() == 0) {
-                        adbPath = c
-                        RinovaLogManager.i("PAIR", "Biner ADB fallback ditemukan di: $c ($versionOut)")
-                        break
-                    }
-                }
-            } catch (_: Exception) {}
+                RinovaLogManager.d("PAIR", "Memeriksa kandidat biner ADB: $path")
+                val proc = ProcessBuilder(path, "version").redirectErrorStream(true).start()
+                val readOut = proc.inputStream.bufferedReader().use { it.readText() }
+                proc.waitFor()
+                readOut.contains("Android Debug Bridge", ignoreCase = true)
+            } catch (e: Exception) {
+                RinovaLogManager.d("PAIR", "Kandidat $path tidak dapat dieksekusi: ${e.message}")
+                false
+            }
         }
 
-        if (adbPath != null) {
+        if (validBinary != null) {
+            RinovaLogManager.i("PAIR", "Menggunakan biner ADB sistem host ($validBinary) untuk pairing...")
             try {
-                RinovaLogManager.i("PAIR", "Mengeksekusi CLI fallback: $adbPath pair $host:$port $cleanCode")
-                val process = ProcessBuilder(listOf(adbPath, "pair", "$host:$port", cleanCode))
+                val process = ProcessBuilder(validBinary, "pair", "$host:$port", cleanCode)
                     .apply {
-                        directory(context.filesDir)
-                        environment()["HOME"] = context.filesDir.absolutePath
                         environment()["TMPDIR"] = context.cacheDir.absolutePath
                     }
                     .redirectErrorStream(true)
                     .start()
 
                 val output = process.inputStream.bufferedReader().use { it.readText() }.trim()
-                val exitCode = process.waitFor()
+                process.waitFor()
 
                 if (output.contains("Successfully paired", ignoreCase = true)) {
                     val msg = "SUKSES PAIRING (CLI): $output"
@@ -201,17 +297,10 @@ class AdbConnectionManager(private val context: Context) {
     }
 
     suspend fun execute(command: String, timeoutMs: Long = 20000): Result<AdbShellResponse> = withContext(Dispatchers.IO) {
-        val dadb = activeDadb ?: return@withContext Result.failure(IllegalStateException("Belum terhubung ke perangkat target"))
+        val session = activeSession ?: return@withContext Result.failure(IllegalStateException("Belum terhubung ke perangkat target"))
         RinovaLogManager.d("SHELL", "> $command")
         try {
-            val response = withTimeoutOrNull(timeoutMs) {
-                dadb.shell(command)
-            } ?: run {
-                val timeoutErr = "Perintah ADB '$command' melebihi batas waktu (${timeoutMs}ms)"
-                RinovaLogManager.e("SHELL", timeoutErr)
-                return@withContext Result.failure(IOException(timeoutErr))
-            }
-
+            val response = session.exec(command, timeoutMs)
             RinovaLogManager.d("SHELL", "< Exit ${response.exitCode} (Output: ${response.output.length} chars)")
             Result.success(response)
         } catch (e: Exception) {
@@ -224,17 +313,17 @@ class AdbConnectionManager(private val context: Context) {
         mutex.withLock {
             RinovaLogManager.i("CONN", "Memutuskan sesi sambungan ADB.")
             try {
-                activeDadb?.close()
+                activeSession?.close()
             } catch (_: Exception) {}
-            activeDadb = null
+            activeSession = null
             _connectionState.value = AdbConnectionState.Disconnected
         }
     }
 
-    private fun fetchDeviceInfoInternal(dadb: Dadb): DeviceInfo {
-        fun getProp(name: String): String {
+    private suspend fun fetchDeviceInfoInternal(session: RinovaAdbSession): DeviceInfo {
+        suspend fun getProp(name: String): String {
             return try {
-                dadb.shell("getprop $name").output.trim()
+                session.exec("getprop $name", 5000).output.trim()
             } catch (_: Exception) {
                 ""
             }
@@ -253,7 +342,7 @@ class AdbConnectionManager(private val context: Context) {
         var batteryLevel = -1
         var isCharging = false
         try {
-            val batteryOut = dadb.shell("dumpsys battery").output
+            val batteryOut = session.exec("dumpsys battery", 5000).output
             batteryOut.lines().forEach { line ->
                 val trimmed = line.trim()
                 if (trimmed.startsWith("level:")) {
@@ -270,7 +359,7 @@ class AdbConnectionManager(private val context: Context) {
         var totalRamMb = 0L
         var freeRamMb = 0L
         try {
-            val memOut = dadb.shell("cat /proc/meminfo").output
+            val memOut = session.exec("cat /proc/meminfo", 5000).output
             memOut.lines().forEach { line ->
                 val trimmed = line.trim()
                 if (trimmed.startsWith("MemTotal:")) {
