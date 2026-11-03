@@ -13,6 +13,7 @@ import com.rinova.app.core.model.ChatMessage
 import com.rinova.app.core.model.DeviceInfo
 import com.rinova.app.core.model.MessageSender
 import com.rinova.app.data.debloat.SafeWhitelist
+import java.io.IOException
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Download
@@ -97,6 +98,7 @@ fun DashboardScreen(
     var actionFeedback by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val isProMode by settingsRepository.isProMode.collectAsStateWithLifecycle(false)
+    val updateState by updateManager.updateState.collectAsStateWithLifecycle()
     val healthEngine = remember(adbRepository) { HealthAuditEngine(adbRepository) }
     var isScanningHealth by remember { mutableStateOf(false) }
     var healthScanResult by remember { mutableStateOf<HealthScanResult?>(null) }
